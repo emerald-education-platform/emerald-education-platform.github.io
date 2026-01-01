@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Emerald Stock Exchange</title>
+    <title>Emerald Educational Platform</title>
     <link rel="icon" href="ESElogoIcon.png" type="image/png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -410,8 +410,8 @@
         <section class="hero section" id="home">
             <div class="container hero-container"> <!-- Added a new container -->
                 <div class="container">
-                    <h1>The Investment System Made For Education</h1>
-                    <p>Emerald Stock Exchange provides a free, simple, and rewarding platform for students of all ages. Built on cooperation, driven by innovation.</p>
+                    <h1>The Education Platform For Financial Literacy</h1>
+                    <p>Emerald Education Platform provides a free, simple, and encouraging platform for students of all ages. Built on cooperation, driven by innovation.</p>
                     <div class="hero-btns">
                         <a href="#" class="btn">For Teachers</a>
                         <a href="/balance" class="btn btn-secondary">Student Portal</a>
@@ -429,7 +429,7 @@
             <div class="container">
                 <div class="section-title">
                     <h2>Why Choose Emerald?</h2>
-                    <p>We combine virtual investment gains with real world school coins deliver an unmatched learning experience for students.</p>
+                    <p>We combine virtual gains with school services to deliver an unmatched learning experience for students.</p>
                 </div>
                 <div class="features-grid">
                     <div class="feature-card">
@@ -444,14 +444,14 @@
                             <i class="fa-solid fa-feather"></i>
                         </div>
                         <h3>Simple Applications</h3>
-                        <p>Experience easy-to-use interfaces built with consumers in mind, no tricks, no traps, no strings attached.</p>
+                        <p>Experience easy-to-use, fast, and secure interfaces built with consumers in mind.</p>
                     </div>
                     <div class="feature-card">
                         <div class="feature-icon">
                             <i class="fa-solid fa-gift"></i>
                         </div>
-                        <h3>Real Rewards</h3>
-                        <p>Keep students engaged in learning with real rewards from virtual gains.</p>
+                        <h3>Encouraging For Students</h3>
+                        <p>Keep students engaged in learning with virtual gains connected to school services.</p>
                     </div>
                 </div>
             </div>
@@ -469,7 +469,7 @@
         <div class="container">
             <div class="footer-content">
                 <div class="footer-about">
-                    <div class="footer-logo">Emerald Stock Exchange</div>
+                    <div class="footer-logo">Emerald Education Platform</div>
                     <p>Encouraging the next generation of investors with accessibility, simplicity, and innovation at our core.</p>
                     <div class="social-icons">
                         <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
@@ -492,7 +492,7 @@
                 <div class="footer-contact">
                     <h4>Contact Us</h4>
                     <p><i class="fas fa-map-marker-alt"></i> 3600 Central Parkway, Dublin, CA</p>
-                    <p><i class="fas fa-envelope"></i> null@null.null</p>
+                    <p><i class="fas fa-envelope"></i> info@emeraldexchange.com</p>
                     <p><i class="fas fa-phone"></i> +0 (000) 000-0000</p>
                 </div>
             </div>
@@ -501,52 +501,5 @@
             </div>
         </div>
     </footer>
-
-    <!-- ===============================
-         JAVASCRIPT FOR INTERACTIVITY
-         =============================== -->
-    <script>
-        // ⚠️ REPLACE THIS URL WITH YOUR ACTUAL DEPLOYED APPS SCRIPT URL
-        const API_URL = 'https://script.google.com/macros/s/AKfycby5Zatwi2ko_KmQ0YkzNMNFlruoJ6IjKxUDZE70_r0eKF5Ok72enwuVuaXWL39Q-v6iPg/exec';
-
-        function fetchBalance() {
-            const studentId = document.getElementById('balanceStudentId').value.trim();
-            const resultDiv = document.getElementById('balanceResult');
-
-            // Clear previous result and show loading
-            resultDiv.innerHTML = '<p>Checking balance...</p>';
-            resultDiv.style.color = 'inherit';
-
-            if (!studentId) {
-                resultDiv.innerHTML = '<p style="color: var(--primary);">Please enter a Student ID.</p>';
-                return;
-            }
-
-            // Create a new script tag for the JSONP request
-            const script = document.createElement('script');
-            // Build the URL with BOTH parameters
-            script.src = API_URL + '?studentId=' + encodeURIComponent(studentId) + '&callback=handleBalanceResponse';
-            // Append to the page to make the request
-            document.head.appendChild(script);
-        }
-
-        // This function MUST be globally available to handle the JSONP response
-        function handleBalanceResponse(data) {
-            const resultDiv = document.getElementById('balanceResult');
-
-            if (data.error) {
-                // If your API returns an error object (like when ID is not found)
-                resultDiv.innerHTML = `<p><strong>Error:</strong> ${data.message}</p>`;
-                resultDiv.style.color = '#dc2626'; // A red color
-            } else {
-                // Successful response
-                resultDiv.innerHTML = `
-                    <p><strong>Student ID:</strong> ${data.studentId}</p>
-                    <p><strong>Current Balance:</strong> <span style="color: var(--primary); font-weight: bold;">${data.currentBalance} Care Coins</span></p>
-                `;
-                resultDiv.style.color = 'inherit';
-            }
-        }
-    </script>
 </body>
 </html>
