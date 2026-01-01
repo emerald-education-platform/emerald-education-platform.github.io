@@ -587,5 +587,221 @@
             );
         };
     </script>
+    <!-- Add this after Google Sign-In script but before your existing JS -->
+    <script>
+    // ==================== SESSION MANAGER CLASS ====================
+    class SessionManager {
+    constructor() {
+        this.sessionToken = null;
+        this.userData = null;
+        this.checkInterval = null;
+    }
+    
+    setSessionFromResponse(response) {
+        if (response.session?.token) {
+        this.sessionToken = response.session.token;
+        this.userData = response.user;
+        
+        // Store in localStorage (encrypted)
+        localStorage.setItem('emerald_user', btoa(JSON.stringify(response.user)));
+        
+        // Start session monitoring
+        this.startSessionMonitoring();
+        this.updateUI();
+        
+        return true;
+        }
+        return false;
+    }
+    
+    async checkSession() {
+        if (!this.sessionToken) return false;
+        
+        try {
+        const response = await fetch(
+            `${APPS_SCRIPT_WEB_APP_URL}/session`,
+            {
+            headers: {
+                'Authorization': `Bearer ${this.sessionToken}`
+            }
+            }
+        );
+        
+        const data = await response.json();
+        return data.valid;
+        } catch {
+        return false;
+        }
+    }
+    
+    async logout() {
+        if (this.sessionToken) {
+        try {
+            await fetch(`${APPS_SCRIPT_WEB_APP_URL}/logout`, {
+            headers: {
+                'Authorization': `Bearer ${this.sessionToken}`
+            }
+            });
+        } catch (error) {
+            console.error('Logout error:', error);
+        }
+        }
+        
+        this.clearSession();
+        window.location.href = '/balance';
+    }
+    
+    clearSession() {
+        this.sessionToken = null;
+        this.userData = null;
+        localStorage.removeItem('emerald_user');
+        
+        if (this.checkInterval) {
+        clearInterval(this.checkInterval);
+        this.checkInterval = null;
+        }
+        
+        this.updateUI();
+    }
+    
+    startSessionMonitoring() {
+        this.checkInterval = setInterval(async () => {
+        const valid = await this.checkSession();
+        if (!valid) {
+            this.clearSession();
+            alert('Session expired. Please login again.');
+        }
+        }, 300000); // Check every 5 minutes
+    }
+    
+    updateUI() {
+        const loginSection = document.querySelector('.login-section');
+        if (!loginSection) return;
+        
+        if (this.userData) {
+        // User is logged in
+        loginSection.innerHTML = `
+            <div class="login-container">
+            <h2>Welcome, ${this.userData.name}!</h2>
+            <p>Student ID: ${this.userData.studentId}</p>
+            <div style="margin-top: 2rem;">
+                <button onclick="window.location.href='#'" class="btn">
+                Go to Dashboard
+                </button>
+                <button onclick="window.sessionManager.logout()" class="btn btn-secondary">
+                Logout
+                <button onclick="window.location.href='#'" class="btn">
+                Go to Dashboard
+                </button>
+                <button onclick="window.sessionManager.logout()" class="btn btn-secondary">
+                Logout
+                </button>
+            </div>
+            </div>
+        `;
+        } else {
+        // User is not logged in - show Google button
+        loginSection.innerHTML = `
+            <div class="login-container">
+            <h2>Ready to Invest?</h2>
+            <p>Sign in to your account to start growing your portfolio</p>
+            <div class="login-form">
+                <div id="g_id_onload"></div>
+                <p class="login-hint">
+                <i class="fas fa-info-circle"></i> Use your school Google account.
+                </p>
+            </div>
+            </div>
+        `;
+        
+        // Re-initialize Google button
+        if (window.google?.accounts?.id) {
+            google.accounts.id.renderButton(
+            document.getElementById('g_id_onload'),
+            {
+                type: 'standard',
+                size: 'large',
+                theme: 'filled_blue',
+                text: 'signin_with',
+                shape: 'pill'
+            }
+            );
+        }
+        }
+    }
+    }
+
+    // ==================== GOOGLE SIGN-IN HANDLER ====================
+    async function handleGoogleSignIn(response) {
+    try {
+        const loginResponse = await fetch(APPS_SCRIPT_WEB_APP_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential: response.credential })
+        });
+        
+        const data = await loginResponse.json();
+        
+        if (data.success) {
+        window.sessionManager.setSessionFromResponse(data);
+        showNotification('Login successful!', 'success');
+        } else {
+        throw new Error(data.message);
+        }
+    } catch (error) {
+        console.error('Login error:', error);
+        showNotification('Login failed: ' + error.message, 'error');
+    }
+    }
+
+    // ==================== HELPER FUNCTIONS ====================
+    function showNotification(message, type = 'info') {
+    // Simple notification implementation
+    alert(`${type.toUpperCase()}: ${message}`);
+    }
+
+    // ==================== INITIALIZE ON LOAD ====================
+    window.addEventListener('DOMContentLoaded', () => {
+    // Initialize session manager
+    window.sessionManager = new SessionManager();
+    
+    // Check for existing session
+    const storedUser = localStorage.getItem('emerald_user');
+    if (storedUser) {
+        try {
+        window.sessionManager.userData = JSON.parse(atob(storedUser));
+        } catch {
+        localStorage.removeItem('emerald_user');
+        }
+    }
+    
+    // Update UI based on login state
+    window.sessionManager.updateUI();
+    });
+
+    // ==================== UPDATE GOOGLE INITIALIZATION ====================
+    // Replace your existing Google init code with:
+    window.onload = function() {
+    google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleGoogleSignIn,
+        auto_prompt: false
+    });
+    
+    // Only render button if user is not logged in
+    if (!window.sessionManager?.userData) {
+        google.accounts.id.renderButton(
+        document.getElementById('g_id_onload'),
+        {
+            type: 'standard',
+            size: 'large',
+            theme: 'filled_blue',
+            text: 'signin_with',
+            shape: 'pill'
+        }
+        );
+    }
+    };
+    </script>
 </body>
 </html>
