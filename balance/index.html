@@ -226,6 +226,14 @@
             border-radius: var(--border-radius);
             margin-bottom: 2rem;
         }
+        /* Separate rule for the Google button container */
+        #g_id_onload {
+            min-height: 44px !important;
+            width: 100% !important;
+            display: flex;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+        }
         .form-group {
             margin-bottom: 1.5rem;
             text-align: left;
@@ -368,6 +376,7 @@
             }
         }
     </style>
+    <script src="../assets/js/config.js"></script>
     <!-- Add this inside the <head> tags, after your other scripts -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -408,7 +417,7 @@
                     <!-- Balance results will appear here -->
                 </div>
             </div>
-            <img src="../assets/Coins.webp" alt="stack" style="width: 300px;">
+            <img src="../assets/tokens.webp" alt="Educational Tokens Illustration" style="width: 300px;">
         </div>
     </section>
 
@@ -417,24 +426,10 @@
         <div class="container login-container">
             <h2>Ready to Invest?</h2>
             <p>Sign in to your account to start growing your portfolio</p>
-            
             <div class="login-form">
-                <div id="g_id_onload"
-                    data-client_id="739471109344-5ebditnjrtk83sqpr0e28bsu90vjps4t.apps.googleusercontent.com"
-                    data-login_uri="https://script.google.com/macros/s/AKfycby5Zatwi2ko_KmQ0YkzNMNFlruoJ6IjKxUDZE70_r0eKF5Ok72enwuVuaXWL39Q-v6iPg/exec"
-                    data-auto_prompt="false">
-                </div>
-                <div class="g_id_signin"
-                    data-type="standard"
-                    data-size="large"
-                    data-theme="filled_blue"
-                    data-text="signin_with"
-                    data-shape="pill"
-                    data-logo_alignment="left"
-                    data-width="300">
-                </div>
+                <div id="g_id_onload"></div> <!-- Button will be rendered here -->
                 <p class="login-hint">
-                    <i class="fas fa-info-circle"></i> You must use your school Google account (@yourschool.edu).
+                    <i class="fas fa-info-circle"></i> You must use your school Google account.
                 </p>
             </div>
         </div>
@@ -469,7 +464,7 @@
         <div class="container">
             <div class="footer-content">
                 <div class="footer-about">
-                    <div class="footer-logo">Emerald Stock Exchange</div>
+                    <div class="footer-logo">Emerald Educational Platform</div>
                     <p>Teaching financial literacy through hands-on investment simulation.</p>
                     <div class="social-icons">
                         <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
@@ -567,6 +562,30 @@
             console.log('Login attempt:', { email, password });
             alert('Login functionality will be implemented in the next phase.');
         });
+    </script>
+    <script>
+        // This script runs after config.js is loaded
+        window.onload = function () {
+            // Configure the Google Sign-In button
+            google.accounts.id.initialize({
+                client_id: GOOGLE_CLIENT_ID,
+                login_uri: APPS_SCRIPT_WEB_APP_URL,
+                auto_prompt: false
+            });
+            // Render the button into the 'g_id_onload' div
+            google.accounts.id.renderButton(
+                document.getElementById('g_id_onload'),
+                {
+                    type: 'standard',
+                    size: 'large',
+                    theme: 'filled_blue',
+                    text: 'signin_with',
+                    shape: 'pill',
+                    logo_alignment: 'left',
+                    width: '300'
+                }
+            );
+        };
     </script>
 </body>
 </html>
