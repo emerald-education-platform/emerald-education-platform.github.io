@@ -189,6 +189,23 @@
         .btn-secondary:hover {
             background-color: rgba(16, 185, 129, 0.05);
         }
+        /* Style for the gap/spacer between button rows */
+        .btn-gap {
+            width: 100%; /* Makes the spacer take the full width */
+            height: 0.5 rem; /* Controls the vertical space (same as gap in hero-btns) */
+            flex-basis: 100%; /* Forces it onto a new line */
+        }
+
+        /* Style for the new Individual Use button */
+        .btn-individual {
+            width: 100%; /* Makes it full-width like the others */
+            max-width: 360px; /* Matches the max-width constraint of other buttons */
+            background-color: var(--primary);
+            color: var(--white);
+        }
+        .btn-individual:hover {
+            background-color: #7b7a2d; 
+        }
         /* Layout: Places text and animation side by side */
         .hero-container {
             display: flex; /* Activates Flexbox */
@@ -413,8 +430,14 @@
                     <h1>The Education Platform For Financial Literacy</h1>
                     <p>Emerald Educational Platform provides a free, simple, and encouraging platform for students of all ages. Built on cooperation, driven by innovation.</p>
                     <div class="hero-btns">
-                        <a href="#" class="btn">For Teachers</a>
-                        <a href="/balance" class="btn btn-secondary">Student Portal</a>
+                        <a href="#" class="btn btn-secondary">For Teachers</a>
+                        <a href="balance" class="btn btn-secondary">Student Portal</a>
+                        
+                        <!-- The Gap/Spacer -->
+                        <div class="btn-gap"></div>
+                        
+                        <!-- New Individual Use Button -->
+                        <a href="individual" class="btn btn-individual">Individual Use</a>
                     </div>
                 </div>
                 <!-- The floating coin goes here, on the same level -->
