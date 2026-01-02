@@ -727,7 +727,10 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ credential: idToken })
             });
-            
+            if (!authResponse.ok) {
+                throw new Error(`Server responded with status: ${authResponse.status}`);
+            }
+
             const result = await authResponse.json();
             
             if (result.success) {
@@ -739,7 +742,7 @@
             }
         } catch (error) {
             console.error('Login error:', error);
-            alert('Could not connect to server.');
+            alert('Could not connect to the authentication server. Please check your deployment URL and try again.');
         }
     }
 
