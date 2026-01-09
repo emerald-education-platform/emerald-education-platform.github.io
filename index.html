@@ -3,26 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teacher Portal | Emerald Educational Platform</title>
+    <title>Emerald Educational Platform</title>
     <link rel="icon" href="ESElogoIcon.png" type="image/png">
-    <!-- Using the same Font Awesome for consistency -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="icon" href="/favicon.ico" type="image/x-icon">
     <style>
         /* ===============================
-           CSS VARIABLES (Same as Main Site)
+           CSS VARIABLES (Easy Customization)
            =============================== */
         :root {
-            --primary: #10b981;       /* Emerald Green */
+            --primary: #10b981;       /* Main brand color (Emerald Green) */
             --primary-dark: #0da271;
             --dark: #1f2937;          /* Dark gray for text */
             --light: #f9fafb;         /* Light gray for backgrounds */
             --white: #ffffff;
             --gray: #9ca3af;
-            --darker: #111827;        /* NEW: Very dark for login section */
             --max-width: 1200px;
             --border-radius: 8px;
-            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             --transition: all 0.3s ease;
         }
 
@@ -35,25 +32,29 @@
             box-sizing: border-box;
         }
         body {
-            font-family: 'Segoe UI', system-ui, sans-serif;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
             line-height: 1.6;
             color: var(--dark);
-            background: linear-gradient(135deg, #f0f9ff 0%, #e6f7ff 100%);
-            min-height: 100vh;
+            background-color: var(--white);
         }
         a {
             text-decoration: none;
             color: inherit;
         }
+        img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        /* ===============================
+           REUSABLE UTILITY CLASSES
+           =============================== */
         .container {
             width: 100%;
             max-width: var(--max-width);
             margin: 0 auto;
             padding: 0 1.5rem;
-            
-        }
-        .section {
-            padding: 5rem 0;
         }
         .btn {
             display: inline-block;
@@ -71,13 +72,8 @@
             background-color: var(--primary-dark);
             transform: translateY(-2px);
         }
-        .btn-secondary {
-            background-color: transparent;
-            color: var(--primary);
-            border: 2px solid var(--primary);
-        }
-        .btn-secondary:hover {
-            background-color: rgba(16, 185, 129, 0.05);
+        .section {
+            padding: 5rem 0;
         }
 
         /* ===============================
@@ -155,15 +151,15 @@
         }
 
         /* ===============================
-           BALANCE CHECK SECTION (Hero Style)
+           HERO SECTION (Big Impactful Words)
            =============================== */
-        .balance-hero {
+        .hero {
             background: linear-gradient(135deg, #f0f9ff 0%, #e6f7ff 100%);
             padding: 10rem 0 9rem;
             margin-top: 70px; /* Offset for fixed header */
             text-align: center;
         }
-        .balance-hero h1 {
+        .hero h1 {
             font-size: 3.5rem;
             font-weight: 800;
             line-height: 1.1;
@@ -173,13 +169,45 @@
             text-align: center;
             color: var(--dark);
         }
-        .balance-hero p {
-            font-size: 1.1rem;
+        .hero p {
+            font-size: 1.25rem;
             color: var(--gray);
-            max-width: 600px;
+            max-width: 700px;
             margin: 0 auto 2.5rem;
         }
-        .balance-hero-container {
+        .hero-btns {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+        }
+        .btn-secondary:hover {
+            background-color: rgba(16, 185, 129, 0.05);
+        }
+        /* Style for the gap/spacer between button rows */
+        .btn-gap {
+            width: 100%; /* Makes the spacer take the full width */
+            height: 0.5 rem; /* Controls the vertical space (same as gap in hero-btns) */
+            flex-basis: 100%; /* Forces it onto a new line */
+        }
+
+        /* Style for the new Individual Use button */
+        .btn-individual {
+            width: 100%; /* Makes it full-width like the others */
+            max-width: 360px; /* Matches the max-width constraint of other buttons */
+            background-color: var(--primary);
+            color: var(--white);
+        }
+        .btn-individual:hover {
+            background-color: #7b7a2d; 
+        }
+        /* Layout: Places text and animation side by side */
+        .hero-container {
             display: flex; /* Activates Flexbox */
             align-items: center; /* Vertically centers items */
             justify-content: space-between; /* Puts space between text and coin */
@@ -187,132 +215,118 @@
             margin: 0 auto;
         }
 
-        /* ===============================
-           LOGIN SECTION (Darker Background)
-           =============================== */
-        .login-section {
-            background-color: var(--darker);
-            color: var(--light);
-            padding: 7rem 0;
+        .hero-content {
+            flex: 1; /* Allows the text block to grow and take up space */
+            max-width: 600px; /* Optional: prevents text from getting too wide */
         }
-        .login-container {
-            max-width: 450px;
-            margin: 0 auto;
-            text-align: center;
+
+        .hero-animation {
+            flex-shrink: 0; /* Prevents the animation container from shrinking */
+            margin-left: 40px; /* Adds space between the text and the coin */
         }
-        .login-container h2 {
-            font-size: 2rem;
-            margin-bottom: 0.5rem;
-            color: var(--white);
+
+        /* The floating animation */
+        .floating-coin {
+            width: 200px; /* Adjust the size as needed */
+            animation: float 3s ease-in-out infinite;
         }
-        .login-container > p {
-            color: var(--gray);
-            margin-bottom: 2.5rem;
-        }
-        .login-form {
-            background-color: rgba(255, 255, 255, 0.05);
-            padding: 2.5rem;
-            border-radius: var(--border-radius);
-            margin-bottom: 2rem;
-        }
-        /* Separate rule for the Google button container */
-        #g_id_onload {
-            min-height: 44px !important;
-            width: 100% !important;
-            display: flex;
-            justify-content: center;
-            margin-bottom: 1.5rem;
-        }
-        .form-group {
-            margin-bottom: 1.5rem;
-            text-align: left;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            color: var(--gray);
-        }
-        .form-group input {
-            width: 100%;
-            padding: 0.85rem 1rem;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: var(--border-radius);
-            background-color: rgba(255, 255, 255, 0.07);
-            color: var(--white);
-            font-size: 16px;
-        }
-        .form-group input:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
-        .login-options {
-            display: flex;
-            gap: 1rem;
-            justify-content: center;
-        }
-        .login-hint {
-            margin-top: 1.5rem;
-            color: var(--gray);
-            font-size: 0.9rem;
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
         }
 
         /* ===============================
-           QUICK LINKS SECTION
+           FEATURES SECTION (Scrollable Content Grid)
            =============================== */
-        .quick-links {
+        .features {
             background-color: var(--white);
-            padding: 3rem 0;
+        }
+        .section-title {
             text-align: center;
+            margin-bottom: 3.5rem;
         }
-        .quick-links h3 {
-            font-size: 1.8rem;
-            margin-bottom: 2rem;
-        }
-        .links-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
-            max-width: 900px;
-            margin: 0 auto;
-        }
-        .link-card {
-            background: var(--light);
-            padding: 2rem;
-            border-radius: var(--border-radius);
-            transition: var(--transition);
-        }
-        .link-card:hover {
-            transform: translateY(-5px);
-            box-shadow: var(--shadow);
-        }
-        .link-card i {
+        .section-title h2 {
             font-size: 2.5rem;
-            color: var(--primary);
             margin-bottom: 1rem;
         }
-        .link-card h4 {
-            margin-bottom: 0.5rem;
+        .section-title p {
+            color: var(--gray);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2.5rem;
+        }
+        .feature-card {
+            background: var(--white);
+            padding: 2.5rem;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+            text-align: center;
+        }
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .feature-icon {
+            font-size: 3rem;
+            color: var(--primary);
+            margin-bottom: 1.5rem;
+        }
+        .feature-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
         }
 
         /* ===============================
-           FOOTER (Same as Main Site)
+           FOOTER (Closing Bar with Details)
            =============================== */
         .site-footer {
             background-color: var(--dark);
             color: var(--light);
-            padding: 3rem 0 1.5rem;
+            padding: 4rem 0 2rem;
         }
         .footer-content {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 3rem;
-            margin-bottom: 2rem;
+            margin-bottom: 3rem;
         }
         .footer-logo {
             font-size: 1.8rem;
             font-weight: 700;
             color: var(--white);
             margin-bottom: 1rem;
+        }
+        .footer-about p {
+            margin-bottom: 1.5rem;
+            color: var(--gray);
+        }
+        .footer-links h4,
+        .footer-contact h4 {
+            font-size: 1.2rem;
+            margin-bottom: 1.5rem;
+            color: var(--white);
+        }
+        .footer-links ul {
+            list-style: none;
+        }
+        .footer-links li {
+            margin-bottom: 0.8rem;
+        }
+        .footer-links a:hover {
+            color: var(--primary);
+        }
+        .footer-contact p {
+            margin-bottom: 0.8rem;
+            color: var(--gray);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
         }
         .social-icons {
             display: flex;
@@ -335,50 +349,59 @@
         }
         .footer-bottom {
             text-align: center;
-            padding-top: 1.5rem;
+            padding-top: 2rem;
             border-top: 1px solid rgba(255, 255, 255, 0.1);
             color: var(--gray);
             font-size: 0.9rem;
         }
 
         /* ===============================
-           RESPONSIVE DESIGN
+           RESPONSIVE DESIGN (Mobile-First)
            =============================== */
         @media (max-width: 768px) {
-            .balance-hero h1 {
-                font-size: 2.2rem;
+            .hero h1 {
+                font-size: 2.5rem;
             }
-            .balance-form {
-                flex-direction: column;
+            .hero p {
+                font-size: 1.1rem;
             }
             .nav-links {
                 display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                width: 100%;
+                background-color: var(--white);
+                flex-direction: column;
+                padding: 1.5rem;
+                box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+                text-align: center;
+            }
+            .nav-links.active {
+                display: flex;
             }
             .mobile-menu-btn {
                 display: block;
             }
-            .login-options {
+            .hero-btns {
                 flex-direction: column;
+                align-items: center;
             }
-            .login-form {
-                padding: 1.5rem;
+            .btn {
+                width: 100%;
+                max-width: 300px;
+                text-align: center;
             }
         }
     </style>
-    <script
-      src="https://unpkg.com/@lottiefiles/dotlottie-wc@0.8.11/dist/dotlottie-wc.js"
-      type="module"
-    ></script>
-
-    <script src="../assets/js/config.js"></script>
-    <!-- Add this inside the <head> tags, after your other scripts -->
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
-    <!-- HEADER -->
+    <!-- ===============================
+         HEADER: Fixed Navigation Bar
+         =============================== -->
     <header class="site-header">
         <div class="container header-container">
-            <a href="/" class="logo-link">
+            <a href="#" class="logo-link">
                 <img src="EmeraldStockExhangeName.png" alt="Emerald Educational Platform Logo" class="logo-img">
             </a>
             <button class="mobile-menu-btn" id="menuBtn">
@@ -386,417 +409,120 @@
             </button>
             <nav>
                 <ul class="nav-links" id="navLinks">
-                    <li><a href="/">Home</a></li>
+                    <li><a href="https://emeraldStockExchange.static.domains/">Home</a></li>
+                    <li><a href="#features">Services</a></li>
                     <li><a href="#about">About</a></li>
-                    <li><a href="#features">How It Works</a></li>
-                    <li><a href="#login" class="btn">Login</a></li>
+                    <li><a href="#contact">Contact</a></li>
+                    <li><a href="#" class="btn">Get Started</a></li>
                 </ul>
             </nav>
         </div>
     </header>
 
-    <!--  HERO -->
-     <section class="balance-hero section">
-        <div class="container" style="display: flex; gap: 0px;">
-            <!-- Balance form next to it -->
-            <div style="flex: 1;">  
-                <h1>Teacher Portal</h1>
-                <p>Manage your classroom investment simulation, add student data, and monitor progress. Sign in below to get started.</p>
-                <div class="hero-btns">
-                    <a href="#" class="btn">Get Started</a>
+    <!-- ===============================
+         MAIN CONTENT
+         =============================== -->
+    <main>
+        <!-- HERO SECTION -->
+        <section class="hero section" id="home">
+            <div class="container hero-container"> <!-- Added a new container -->
+                <div class="container">
+                    <h1>The Education Platform For Financial Literacy</h1>
+                    <p>Emerald Educational Platform provides a free, simple, and encouraging platform for students of all ages. Built on cooperation, driven by innovation.</p>
+                    <div class="hero-btns">
+                        <a href="teacherside" class="btn btn-secondary">For Teachers</a>
+                        <a href="balance" class="btn btn-secondary">Student Portal</a>
+                        
+                        <!-- The Gap/Spacer -->
+                        <div class="btn-gap"></div>
+                        
+                        <!-- New Individual Use Button -->
+                        <a href="individual" class="btn btn-individual">Individual Use</a>
+                    </div>
+                </div>
+                <!-- The floating coin goes here, on the same level -->
+                <div class="hero-animation">
+                    <img src="ESElogo.png" alt="Floating Crypto Coin" class="floating-coin">
                 </div>
             </div>
-            <dotlottie-wc
-              src="https://lottie.host/b943e9b3-d84a-4309-9df7-fdd6dd50905b/PbNG7VgVZM.lottie"
-              style="width: 300px;height: 300px"
-              autoplay
-              loop
-            ></dotlottie-wc>
-        </div>
-    </section>
+        </section>
 
-    <!-- LOGIN SECTION (Darker Background) -->
-    <section class="login-section section" id="login">
-        <div class="container login-container">
-            <h2>Teacher Login</h2>
-            <p>Sign in with your school Google account to access teacher features</p>
-            <div class="login-form">
-                <div id="g_id_onload"></div> <!-- Button will be rendered here -->
-                <p class="login-hint">
-                    <i class="fas fa-info-circle"></i> Use your <b>school</b> Google account.
-                </p>
+        <!-- FEATURES SECTION -->
+        <section class="features section" id="features">
+            <div class="container">
+                <div class="section-title">
+                    <h2>Why Choose Emerald?</h2>
+                    <p>We combine virtual gains with school services to deliver an unmatched learning experience for students.</p>
+                </div>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fa-solid fa-hand-holding-heart"></i>
+                        </div>
+                        <h3>Accessibility For All</h3>
+                        <p>Enjoy all of our services completely free of charge, without any limits on usage.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fa-solid fa-feather"></i>
+                        </div>
+                        <h3>Simple Applications</h3>
+                        <p>Experience easy-to-use, fast, and secure interfaces built with consumers in mind.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fa-solid fa-gift"></i>
+                        </div>
+                        <h3>Encouraging For Students</h3>
+                        <p>Keep students engaged in learning with virtual gains connected to school services.</p>
+                    </div>
+                </div>
             </div>
-        </div>
-    </section>
+        </section>
 
-    <!-- QUICK LINKS -->
-    <section class="quick-links section">
-        <div class="container">
-            <h3>Quick Access</h3>
-            <div class="links-grid">
-                <a href="/" class="link-card">
-                    <i class="fas fa-home"></i>
-                    <h4>Home</h4>
-                    <p>Back to main Emerald Educational Platform homepage</p>
-                </a>
-                <a href="#features" class="link-card">
-                    <i class="fas fa-chalkboard-teacher"></i>
-                    <h4>Features</h4>
-                    <p>Explore teacher tools and resources</p>
-                </a>
-                <a href="#about" class="link-card">
-                    <i class="fas fa-info-circle"></i>
-                    <h4>About the Program</h4>
-                    <p>Educational goals and benefits</p>
-                </a>
-            </div>
-        </div>
-    </section>
+        <!-- ADD MORE SECTIONS HERE (e.g., About, Contact) -->
+        <!-- You can duplicate the structure above to create new sections. -->
 
-    <!-- FOOTER -->
-    <footer class="site-footer">
+    </main>
+
+    <!-- ===============================
+         FOOTER: Closing Bar with Details
+         =============================== -->
+    <footer class="site-footer" id="contact">
         <div class="container">
             <div class="footer-content">
                 <div class="footer-about">
                     <div class="footer-logo">Emerald Educational Platform</div>
-                    <p>Teaching financial literacy through hands-on investment simulation.</p>
+                    <p>Encouraging the next generation of investors with accessibility, simplicity, and innovation at our core.</p>
                     <div class="social-icons">
                         <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
                         <a href="#" aria-label="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
                         <a href="#" aria-label="GitHub"><i class="fab fa-github"></i></a>
+                        <a href="#" aria-label="Discord"><i class="fab fa-discord"></i></a>
                     </div>
                 </div>
                 <div class="footer-links">
-                    <h4>Student Resources</h4>
+                    <h4>Quick Links</h4>
                     <ul>
-                        <li><a href="/balance">Check Balance</a></li>
-                        <li><a href="#">Investment Guide</a></li>
-                        <li><a href="#">Market Simulator</a></li>
-                        <li><a href="#">FAQ</a></li>
+                        <li><a href="#home">Home</a></li>
+                        <li><a href="#features">Services</a></li>
+                        <li><a href="#about">About Us</a></li>
+                        <li><a href="#contact">Contact</a></li>
+                        <li><a href="#">Privacy Policy</a></li>
+                        <li><a href="#">Terms of Service</a></li>
                     </ul>
                 </div>
                 <div class="footer-contact">
-                    <h4>Contact Support</h4>
-                    <p><i class="fas fa-envelope"></i> contact@emeraldedu.org (currently unavaliable)</p>
-                    <p><i class="fas fa-phone"></i> School IT Extension: 5555 (currently unavaliable)</p>
+                    <h4>Contact Us</h4>
+                    <p><i class="fas fa-map-marker-alt"></i> 3600 Central Parkway, Dublin, CA (currently unavaliable)</p>
+                    <p><i class="fas fa-envelope"></i> info@emeraldexchange.com (currently unavaliable)</p>
+                    <p><i class="fas fa-phone"></i> +0 (000) 000-0000 (currently unavaliable)</p>
                 </div>
             </div>
             <div class="footer-bottom">
-                <p>&copy; <span id="currentYear"></span> Emerald Educational Platform. Educational Simulation Project. | <a href="#">Privacy Policy</a> | <a href="#">Terms of Use</a></p>
+                <p>&copy; <span id="currentYear"></span> Emerald Educational Platform. All rights reserved.</p>
             </div>
         </div>
     </footer>
-
-    <!-- JAVASCRIPT -->
-    <script>
-        // ====================
-        // BALANCE CHECK LOGIC
-        // ====================
-        const API_URL = 'https://script.google.com/macros/s/AKfycbwQgRN3FBc6qrjSrYzYu6ApDXT62wwSR3l26M9agJDCs2_LI9WiyH8W1mDaAJEncLVsDw/exec';
-
-        function fetchBalance() {
-            const studentId = document.getElementById('balanceStudentId').value.trim();
-            const resultDiv = document.getElementById('balanceResult');
-
-            // Clear and show loading
-            resultDiv.innerHTML = '<p><i class="fas fa-spinner fa-spin"></i> Checking balance...</p>';
-            resultDiv.style.color = 'inherit';
-
-            if (!studentId || !/^\d{5,6}$/.test(studentId)) {
-                resultDiv.innerHTML = '<p style="color: #ef4444;">Please enter a valid 5-6 digit Student ID.</p>';
-                return;
-            }
-
-            // JSONP request for cross-domain compatibility
-            const script = document.createElement('script');
-            script.src = `${API_URL}?studentId=${encodeURIComponent(studentId)}&callback=handleBalanceResponse`;
-            document.head.appendChild(script);
-        }
-
-        function handleBalanceResponse(data) {
-            const resultDiv = document.getElementById('balanceResult');
-            
-            if (data.error) {
-                resultDiv.innerHTML = `<p style="color: #ef4444;"><strong>Error:</strong> ${data.message}</p>`;
-            } else {
-                resultDiv.innerHTML = `
-                    <p><strong>Student ID:</strong> ${data.studentId}</p>
-                    <p><strong>Current Balance:</strong> 
-                        <span style="color: var(--primary); font-weight: bold; font-size: 1.2rem;">
-                            ${data.currentBalance} Emeralds
-                        </span>
-                    </p>
-                    <p style="margin-top: 0.5rem; color: var(--gray); font-size: 0.9rem;">
-                        <i class="fas fa-lightbulb"></i> Ready to invest? Sign in below!
-                    </p>
-                `;
-            }
-        }
-
-        // ====================
-        // MOBILE MENU TOGGLE
-        // ====================
-        document.getElementById('menuBtn')?.addEventListener('click', function() {
-            document.getElementById('navLinks').classList.toggle('active');
-        });
-
-        // ====================
-        // PLACEHOLDER LOGIN
-        // ====================
-        document.querySelector('.login-form .btn')?.addEventListener('click', function() {
-            const email = document.getElementById('studentEmail').value;
-            const password = document.getElementById('studentPassword').value;
-            
-            if (!email || !password) {
-                alert('Please fill in both email and password fields.');
-                return;
-            }
-            
-            // Placeholder for actual login logic
-            console.log('Login attempt:', { email, password });
-            alert('Login functionality will be implemented in the next phase.');
-        });
-    </script>
-    <script>
-        // This script runs after config.js is loaded
-        window.onload = function () {
-            // Configure the Google Sign-In button
-            google.accounts.id.initialize({
-                client_id: '739471109344-5ebditnjrtk83sqpr0e28bsu90vjps4t.apps.googleusercontent.com', // SAME AS BEFORE
-                login_uri: 'https://script.google.com/macros/s/AKfycbwQgRN3FBc6qrjSrYzYu6ApDXT62wwSR3l26M9agJDCs2_LI9WiyH8W1mDaAJEncLVsDw/exec',
-                callback: handleIndividualSignIn, // NEW HANDLER FUNCTION
-                auto_prompt: false
-            });
-            // Render the button into the 'g_id_onload' div
-            google.accounts.id.renderButton(
-                document.getElementById('g_id_onload'),
-                {
-                    type: 'standard',
-                    size: 'large',
-                    theme: 'filled_blue',
-                    text: 'signin_with',
-                    shape: 'pill',
-                    logo_alignment: 'left',
-                    width: '300'
-                }
-            );
-        };
-    </script>
-    <script>
-    // ==================== TEACHER SESSION MANAGER ====================
-    class TeacherSessionManager {
-        constructor() {
-            this.sessionToken = null;
-            this.userData = null;
-            this.checkInterval = null;
-        }
-        setSessionFromResponse(response) {
-            if (response.session?.token) {
-                this.sessionToken = response.session.token;
-                this.userData = response.user;
-                localStorage.setItem('emerald_teacher', btoa(JSON.stringify(response.user)));
-                this.startSessionMonitoring();
-                this.updateUI();
-                return true;
-            }
-            return false;
-        }
-        async checkSession() {
-            if (!this.sessionToken) return false;
-            // Simulate always valid for demo
-            return true;
-        }
-        async logout() {
-            this.clearSession();
-            window.location.href = '/teacherside';
-        }
-        clearSession() {
-            this.sessionToken = null;
-            this.userData = null;
-            localStorage.removeItem('emerald_teacher');
-            if (this.checkInterval) {
-                clearInterval(this.checkInterval);
-                this.checkInterval = null;
-            }
-            this.updateUI();
-        }
-        startSessionMonitoring() {
-            this.checkInterval = setInterval(async () => {
-                const valid = await this.checkSession();
-                if (!valid) {
-                    this.clearSession();
-                    alert('Session expired. Please login again.');
-                }
-            }, 300000);
-        }
-        updateUI() {
-            const loginSection = document.querySelector('.login-section');
-            if (!loginSection) return;
-            if (this.userData) {
-                loginSection.innerHTML = `
-                    <div class="login-container">
-                        <h2>Welcome, ${this.userData.name}!</h2>
-                        <p>Email: ${this.userData.email}</p>
-                        <div style="margin-top: 2rem;">
-                            <button onclick=\"window.teacherSessionManager.logout()\" class="btn btn-secondary">Logout</button>
-                        </div>
-                        <form class="teacher-form" id="addStudentForm">
-                            <h3>Add Student Data</h3>
-                            <div class="form-group">
-                                <label for="studentName">Student Name</label>
-                                <input type="text" id="studentName" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="studentId">Student ID</label>
-                                <input type="text" id="studentId" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="studentBalance">Initial Balance</label>
-                                <input type="number" id="studentBalance" required>
-                            </div>
-                            <button type="submit" class="btn">Add Student</button>
-                            <div id="addStudentResult" style="margin-top:1rem;"></div>
-                        </form>
-                    </div>
-                `;
-                setTimeout(() => {
-                    document.getElementById('addStudentForm')?.addEventListener('submit', function(e) {
-                        e.preventDefault();
-                        const name = document.getElementById('studentName').value.trim();
-                        const id = document.getElementById('studentId').value.trim();
-                        const balance = document.getElementById('studentBalance').value.trim();
-                        const resultDiv = document.getElementById('addStudentResult');
-                        if (!name || !id || !balance) {
-                            resultDiv.innerHTML = '<span style="color:#ef4444;">Please fill all fields.</span>';
-                            return;
-                        }
-                        // Simulate API call
-                        setTimeout(() => {
-                            resultDiv.innerHTML = `<span style='color:var(--primary);'>Student ${name} (ID: ${id}) added with ${balance} Emeralds.</span>`;
-                        }, 800);
-                    });
-                }, 100);
-            } else {
-                loginSection.innerHTML = `
-                    <div class="login-container">
-                        <h2>Teacher Login</h2>
-                        <p>Sign in with your school Google account to access teacher features</p>
-                        <div class="login-form">
-                            <div id="g_id_onload"></div>
-                            <p class="login-hint">
-                                <i class="fas fa-info-circle"></i> Use your <b>school</b> Google account.
-                            </p>
-                        </div>
-                    </div>
-                `;
-                if (window.google?.accounts?.id) {
-                    google.accounts.id.renderButton(
-                        document.getElementById('g_id_onload'),
-                        {
-                            type: 'standard',
-                            size: 'large',
-                            theme: 'filled_blue',
-                            text: 'signin_with',
-                            shape: 'pill'
-                        }
-                    );
-                }
-            }
-        }
-    }
-    // ==================== GOOGLE SIGN-IN HANDLER ====================
-    async function handleTeacherSignIn(response) {
-        const idToken = response.credential;
-        try {
-            // Simulate backend authentication ALERT ALERT ALERT ALERT ALERT
-            // Simulate backend authentication ALERT ALERT ALERT ALERT ALERT
-            // Simulate backend authentication ALERT ALERT ALERT ALERT ALERT
-            // Simulate backend authentication ALERT ALERT ALERT ALERT ALERT
-            // Simulate backend authentication ALERT ALERT ALERT ALERT ALERT
-            // Simulate backend authentication ALERT ALERT ALERT ALERT ALERT
-            // Simulate backend authentication ALERT ALERT ALERT ALERT ALERT
-            // Simulate backend authentication ALERT ALERT ALERT ALERT ALERT
-            /*
-
-                ░█████╗░██╗░░░░░███████╗██████╗░████████╗
-                ██╔══██╗██║░░░░░██╔════╝██╔══██╗╚══██╔══╝
-                ███████║██║░░░░░█████╗░░██████╔╝░░░██║░░░
-                ██╔══██║██║░░░░░██╔══╝░░██╔══██╗░░░██║░░░
-                ██║░░██║███████╗███████╗██║░░██║░░░██║░░░
-                ╚═╝░░╚═╝╚══════╝╚══════╝╚═╝░░╚═╝░░░╚═╝░░░
-
-                
-                ░█████╗░██╗░░░░░███████╗██████╗░████████╗
-                ██╔══██╗██║░░░░░██╔════╝██╔══██╗╚══██╔══╝
-                ███████║██║░░░░░█████╗░░██████╔╝░░░██║░░░
-                ██╔══██║██║░░░░░██╔══╝░░██╔══██╗░░░██║░░░
-                ██║░░██║███████╗███████╗██║░░██║░░░██║░░░
-                ╚═╝░░╚═╝╚══════╝╚══════╝╚═╝░░╚═╝░░░╚═╝░░░
-
-
-
-                ░█████╗░██╗░░░░░███████╗██████╗░████████╗
-                ██╔══██╗██║░░░░░██╔════╝██╔══██╗╚══██╔══╝
-                ███████║██║░░░░░█████╗░░██████╔╝░░░██║░░░
-                ██╔══██║██║░░░░░██╔══╝░░██╔══██╗░░░██║░░░
-                ██║░░██║███████╗███████╗██║░░██║░░░██║░░░
-                ╚═╝░░╚═╝╚══════╝╚══════╝╚═╝░░╚═╝░░░╚═╝░░░
-            */
-            // Simulate backend authentication ALERT ALERT ALERT ALERT ALERT
-            // Simulate backend authentication ALERT ALERT ALERT ALERT ALERT
-            // Simulate backend authentication ALERT ALERT ALERT ALERT ALERT
-            // Simulate backend authentication ALERT ALERT ALERT ALERT ALERT
-            // Simulate backend authentication ALERT ALERT ALERT ALERT ALERT
-            // Simulate backend authentication ALERT ALERT ALERT ALERT ALERT
-            // Simulate backend authentication ALERT ALERT ALERT ALERT ALERT
-            // Simulate backend authentication ALERT ALERT ALERT ALERT ALERT
-            // Simulate backend authentication ALERT ALERT ALERT ALERT ALERT
-            // Simulate backend authentication ALERT ALERT ALERT ALERT ALERT
-            // Simulate backend authentication ALERT ALERT ALERT ALERT ALERT
-            // Simulate backend authentication ALERT ALERT ALERT ALERT ALERT
-            const result = { success: true, user: { name: "Teacher Name", email: "teacher@school.edu" }, session: { token: "teacher-session-token" } };
-            if (result.success) {
-                window.teacherSessionManager.setSessionFromResponse(result);
-            } else {
-                alert('Login failed: ' + result.message);
-            }
-        } catch (error) {
-            alert('Could not connect to the authentication server.');
-        }
-    }
-    // ==================== INITIALIZE ON LOAD ====================
-    window.addEventListener('DOMContentLoaded', () => {
-        window.teacherSessionManager = new TeacherSessionManager();
-        const storedUser = localStorage.getItem('emerald_teacher');
-        if (storedUser) {
-            try {
-                window.teacherSessionManager.userData = JSON.parse(atob(storedUser));
-            } catch {
-                localStorage.removeItem('emerald_teacher');
-            }
-        }
-        window.teacherSessionManager.updateUI();
-    });
-    // ==================== UPDATE GOOGLE INITIALIZATION ====================
-    window.onload = function() {
-        google.accounts.id.initialize({
-            client_id: '739471109344-5ebditnjrtk83sqpr0e28bsu90vjps4t.apps.googleusercontent.com',
-            callback: handleTeacherSignIn,
-            auto_prompt: false
-        });
-        if (!window.teacherSessionManager?.userData) {
-            google.accounts.id.renderButton(
-                document.getElementById('g_id_onload'),
-                {
-                    type: 'standard',
-                    size: 'large',
-                    theme: 'filled_blue',
-                    text: 'signin_with',
-                    shape: 'pill'
-                }
-            );
-        }
-    };
-    </script>
 </body>
 </html>
