@@ -648,7 +648,7 @@
                     localStorage.removeItem('emerald_user'); // Clear your custom storage if you used it
                     
                     // 3. Force a hard page reload to reset all client-side state
-                    window.location.href = window.location.href; // or window.location.reload(true);
+                    window.location.href = window.location.reload(true); // or window.location.reload(true);
                     
                 } catch (error) {
                     console.error('Logout error:', error);
@@ -734,7 +734,7 @@
                     async (event, session) => {
                         console.log('Supabase Auth event:', event, 'Session present?', !!session);
                         
-                        if (session) {
+                        if (session) {href
                             // User just logged in or session was refreshed
                             console.log('User is logged in:', session.user.email);
                             transformToDashboard(session.user);
