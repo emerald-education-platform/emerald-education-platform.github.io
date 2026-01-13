@@ -668,14 +668,30 @@
             // Make logout available globally
             window.logout = logout;
             function transformToDashboard(user) {
-                console.log('Transforming page to dashboard for:', user.email);
+                console.log('Transforming page to dashboard for:', user);
+                
+                // Get the user's actual name from Google profile
+                // user.user_metadata contains: full_name, avatar_url, etc.
+                const displayName = user.user_metadata?.full_name || 
+                                user.user_metadata?.name || 
+                                user.email?.split('@')[0] || 
+                                'User';
+                
+                // Get avatar if available
+                const avatarUrl = user.user_metadata?.avatar_url;
                 
                 // 1. Update the main hero section
                 const heroSection = document.querySelector('.balance-hero');
                 if (heroSection) {
                     heroSection.innerHTML = `
                         <div class="container" style="text-align: center;">
-                            <h1>Welcome, ${user.email.split('@')[0]}!</h1>
+                            ${avatarUrl ? `
+                                <img src="${avatarUrl}" 
+                                    style="width: 80px; height: 80px; border-radius: 50%; margin-bottom: 1rem; border: 3px solid var(--primary);"
+                                    alt="${displayName}'s profile picture">
+                            ` : ''}
+                            <h1>Welcome, ${displayName}!</h1>
+                            <p style="color: var(--gray); margin-top: 0.5rem;">${user.email}</p>
                             <p>Your Emerald Exchange Dashboard</p>
                             <div style="margin-top: 2rem;">
                                 <div style="background: white; padding: 2rem; border-radius: 8px; display: inline-block;">
@@ -698,8 +714,16 @@
                         <div class="container login-container">
                             <h2>Account</h2>
                             <div style="background: rgba(255,255,255,0.1); padding: 2rem; border-radius: 8px;">
+                                ${avatarUrl ? `
+                                    <div style="text-align: center; margin-bottom: 1rem;">
+                                        <img src="${avatarUrl}" 
+                                            style="width: 60px; height: 60px; border-radius: 50%;"
+                                            alt="${displayName}'s profile picture">
+                                    </div>
+                                ` : ''}
+                                <p><strong>Name:</strong> ${displayName}</p>
                                 <p><strong>Email:</strong> ${user.email}</p>
-                                <p><strong>Joined:</strong> ${new Date().toLocaleDateString()}</p>
+                                <p><strong>Member since:</strong> ${new Date(user.created_at).toLocaleDateString()}</p>
                                 <div style="margin-top: 1.5rem;">
                                     <button onclick="logout()" class="btn" style="background: #ef4444;">
                                         <i class="fas fa-sign-out-alt"></i> Log Out
@@ -711,7 +735,7 @@
                 }
                 
                 // 3. Update page title
-                document.title = `Dashboard | ${user.email.split('@')[0]} - Emerald Exchange`;
+                document.title = `${displayName}'s Dashboard - Emerald Exchange`;
             }
 
             function showLoginUI() {
