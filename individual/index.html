@@ -633,21 +633,35 @@
             });
             async function logout() {
                 if (!window.emeraldSupabase) return;
-                
-                if (!confirm('Are you sure you want to log out?')) return;
+                                
+                // Show loading state on button
+                const logoutBtn = document.querySelector('button[onclick*="logout"]');
+                const originalText = logoutBtn?.textContent;
+                if (logoutBtn) {
+                    logoutBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging out...';
+                    logoutBtn.disabled = true;
+                }
                 
                 try {
                     const { error } = await window.emeraldSupabase.auth.signOut();
                     if (error) throw error;
                     
-                    console.log('Logged out from Supabase.');
+                    console.log('Logged out successfully.');
                     
-                    // EXPLICIT REDIRECT - No ambiguity
-                    window.location.href = 'https://emerald-education-platform.github.io/individual/';
+                    // Brief delay for user to see confirmation
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 800);
                     
                 } catch (error) {
                     console.error('Logout error:', error);
                     alert('Logout failed: ' + error.message);
+                    
+                    // Restore button
+                    if (logoutBtn && originalText) {
+                        logoutBtn.innerHTML = originalText;
+                        logoutBtn.disabled = false;
+                    }
                 }
             }
 
