@@ -594,35 +594,8 @@
         let userCash = 10000.00;
         let selectedStock = null;
         
-        // Initialize application
-        document.addEventListener('DOMContentLoaded', function() {
-            checkAuth();
-        });
-        
-        async function checkAuth() {
-            const { data: { user }, error } = await supabase.auth.getUser();
-            
-            if (error) {
-                console.error('Auth check error:', error);
-                window.location.href = '/individual/index.html';
-                return;
-            }
-            
-            if (!user) {
-                console.log('No user found, redirecting to login...');
-                window.location.href = '/individual/index.html';
-                return;
-            }
-            
-            currentUser = user;
-            console.log('User authenticated:', user.email);
-            await initializeApp();
-        }
-        
-        async function initializeApp() {
-            await loadMarketData();
-            await updateBalanceDisplay();
-        }
+        // Removed auth check - using demo mode
+        // Dashboard initializes via window.onload at the bottom of the script
         
         // Fix 1: Enhanced logout function
         async function logout() {
@@ -1145,7 +1118,7 @@
             try {
                 // Using CORS proxy to access Yahoo Finance
                 const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1d`;
-                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`;
+                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`;
                 
                 const response = await fetch(proxyUrl);
                 const data = await response.json();
