@@ -560,10 +560,14 @@
     
     <script>
         // ===========================================
-        // CRITICAL FIXES - REPLACE THESE WITH YOUR VALUES
+        // API CONFIGURATION
         // ===========================================
         const supabaseUrl = 'https://nlcdgfpnreyjoomctoht.supabase.co';
         const supabaseKey = 'sb_publishable_8OPX1CdBvxjjGkJbf5nRPA_oz0iSd_p';
+        const ALPHA_VANTAGE_API_KEY = 'X4JONOZEN4GIJXLI';
+        
+        // Stock symbols to track
+        const TRACKED_SYMBOLS = ['AAPL', 'GOOGL', 'MSFT', 'AMZN', 'TSLA', 'NVDA', 'META', 'NFLX', 'JPM', 'JNJ'];
         
         // Initialize Supabase client - will be set when library loads
         let supabase = null;
@@ -590,9 +594,6 @@
         let userTransactions = [];
         let userCash = 10000.00;
         let selectedStock = null;
-        
-        // Popular stocks to track
-        const TRACKED_SYMBOLS = ['AAPL', 'GOOGL', 'MSFT', 'AMZN', 'TSLA', 'NVDA', 'META'];
         
         // Initialize application
         document.addEventListener('DOMContentLoaded', function() {
@@ -1099,119 +1100,132 @@
             }
         }
         
-        // Load market data function
+        // Load market data function - Now uses Alpha Vantage API
         async function loadMarketData() {
             try {
-                console.log('loadMarketData: Starting...');
+                console.log('loadMarketData: Starting with Alpha Vantage API...');
                 
                 // Show loading state
                 const tableBody = document.getElementById('stocks-table-body');
-                tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px;"><div class="loading-spinner"></div> Loading market data...</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px;"><div class="loading-spinner"></div> Loading real-time market data from Alpha Vantage...</td></tr>';
                 
-                console.log('loadMarketData: Supabase client ready');
+                // Fetch stock data from Alpha Vantage for each symbol
+                const stockPromises = TRACKED_SYMBOLS.map(symbol => fetchStockQuote(symbol));
                 
-                if (!supabase) {
-                    throw new Error('Supabase client not initialized');
-                }
+                console.log(`Fetching data for ${TRACKED_SYMBOLS.length} stocks...`);
                 
-                console.log('loadMarketData: Fetching stocks from Supabase...');
+                // Wait for all requests to complete
+                const results = await Promise.allSettled(stockPromises);
                 
-                let stocks = null;
-                let error = null;
+                // Filter successful results
+                const stocks = results
+                    .filter(result => result.status === 'fulfilled' && result.value !== null)
+                    .map(result => result.value);
                 
-                try {
-                    // Fetch stocks from Supabase
-                    const result = await supabase
-                        .from('stocks')
-                        .select('*')
-                        .order('symbol', { ascending: true });
-                    
-                    stocks = result.data;
-                    error = result.error;
-                } catch (fetchError) {
-                    // Check if it's a DataCloneError or iframe restriction
-                    if (fetchError.message && fetchError.message.includes('DataCloneError')) {
-                        console.warn('Browser context restriction detected. Loading demo data instead.');
-                        console.warn('To use real data, open this file directly in a browser tab (not in an iframe).');
-                        
-                        // Load demo data instead
-                        loadDemoStocks();
-                        return;
-                    }
-                    throw fetchError;
-                }
+                console.log(`Successfully loaded ${stocks.length} out of ${TRACKED_SYMBOLS.length} stocks`);
                 
-                // Log safely without Headers object
-                if (error) {
-                    console.error('Error loading stocks:', error.message || error);
-                } else {
-                    console.log('loadMarketData: Received', stocks ? stocks.length : 0, 'stocks');
-                }
-                
-                if (error) {
-                    console.error('Supabase error details:', error.message, error.details, error.hint);
-                    
-                    // If it's a connection error, offer demo mode
-                    tableBody.innerHTML = `
-                        <tr><td colspan="7" style="text-align: center; padding: 40px;">
-                            <div style="color: var(--red); margin-bottom: 15px;">
-                                <strong>Database Connection Error</strong>
-                            </div>
-                            <p style="color: var(--text-secondary); margin-bottom: 20px;">
-                                ${error.message || 'Unknown error'}<br>
-                                Please check your database connection and table setup.
-                            </p>
-                            <button onclick="loadDemoStocks()" style="padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer;">
-                                Load Demo Data Instead
-                            </button>
-                        </td></tr>
-                    `;
+                if (stocks.length === 0) {
+                    console.warn('No stocks loaded from Alpha Vantage. Loading demo data.');
+                    loadDemoStocks();
                     return;
                 }
                 
-                if (!stocks || stocks.length === 0) {
-                    console.warn('No stocks found in database');
-                    tableBody.innerHTML = `
-                        <tr><td colspan="7" style="text-align: center; padding: 40px;">
-                            <div style="margin-bottom: 15px;">No stocks available in database.</div>
-                            <p style="color: var(--text-secondary); margin-bottom: 20px;">
-                                Please add stocks to your Supabase "stocks" table.
-                            </p>
-                            <button onclick="loadDemoStocks()" style="padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer;">
-                                Load Demo Data Instead
-                            </button>
-                        </td></tr>
-                    `;
-                    return;
-                }
-                
-                // Store the data
+                // Store and display the data
                 stocksData = stocks;
-                
-                console.log(`loadMarketData: Loaded ${stocks.length} stocks, displaying...`);
-                
-                // Display the stocks
                 displayStocks(stocks);
                 
-                console.log(`loadMarketData: Successfully loaded and displayed ${stocks.length} stocks`);
+                console.log('Market data loaded successfully from Alpha Vantage');
                 
             } catch (error) {
-                console.error('Market data loading error:', error.message || error);
-                const tableBody = document.getElementById('stocks-table-body');
-                tableBody.innerHTML = `
-                    <tr><td colspan="7" style="text-align: center; padding: 40px;">
-                        <div style="color: var(--red); margin-bottom: 15px;">
-                            <strong>Error Loading Market Data</strong>
-                        </div>
-                        <p style="color: var(--text-secondary); margin-bottom: 20px;">
-                            ${error.message || 'Unknown error'}
-                        </p>
-                        <button onclick="loadDemoStocks()" style="padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer;">
-                            Load Demo Data Instead
-                        </button>
-                    </td></tr>
-                `;
+                console.error('Error loading market data:', error);
+                console.warn('Loading demo data due to error.');
+                loadDemoStocks();
             }
+        }
+        
+        // Fetch individual stock quote from Alpha Vantage
+        async function fetchStockQuote(symbol) {
+            try {
+                const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${ALPHA_VANTAGE_API_KEY}`;
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                // Check for API errors or rate limits
+                if (data['Error Message']) {
+                    console.error(`Error fetching ${symbol}:`, data['Error Message']);
+                    return null;
+                }
+                
+                if (data['Note']) {
+                    console.warn(`API rate limit reached:`, data['Note']);
+                    return null;
+                }
+                
+                const quote = data['Global Quote'];
+                
+                if (!quote || !quote['05. price']) {
+                    console.warn(`No data available for ${symbol}`);
+                    return null;
+                }
+                
+                // Parse the data into our format
+                const currentPrice = parseFloat(quote['05. price']);
+                const change = parseFloat(quote['09. change']);
+                const changePercent = parseFloat(quote['10. change percent'].replace('%', ''));
+                const volume = parseInt(quote['06. volume']);
+                
+                return {
+                    symbol: symbol,
+                    name: getCompanyName(symbol),
+                    current_price: currentPrice,
+                    change: change,
+                    change_percent: changePercent,
+                    volume: volume,
+                    market_cap: getEstimatedMarketCap(symbol, currentPrice)
+                };
+                
+            } catch (error) {
+                console.error(`Error fetching quote for ${symbol}:`, error);
+                return null;
+            }
+        }
+        
+        // Helper function to get company names
+        function getCompanyName(symbol) {
+            const names = {
+                'AAPL': 'Apple Inc.',
+                'GOOGL': 'Alphabet Inc.',
+                'MSFT': 'Microsoft Corp.',
+                'AMZN': 'Amazon.com Inc.',
+                'TSLA': 'Tesla Inc.',
+                'NVDA': 'NVIDIA Corp.',
+                'META': 'Meta Platforms Inc.',
+                'NFLX': 'Netflix Inc.',
+                'JPM': 'JPMorgan Chase & Co.',
+                'JNJ': 'Johnson & Johnson'
+            };
+            return names[symbol] || symbol;
+        }
+        
+        // Helper function to estimate market cap (rough estimates)
+        function getEstimatedMarketCap(symbol, currentPrice) {
+            // These are approximate shares outstanding (in millions)
+            const sharesOutstanding = {
+                'AAPL': 15700,
+                'GOOGL': 12500,
+                'MSFT': 7430,
+                'AMZN': 10300,
+                'TSLA': 3180,
+                'NVDA': 2470,
+                'META': 2560,
+                'NFLX': 440,
+                'JPM': 2900,
+                'JNJ': 2400
+            };
+            
+            const shares = sharesOutstanding[symbol] || 1000;
+            return currentPrice * shares * 1000000; // Convert millions to actual number
         }
         
         // Load demo stocks when Supabase is not available
@@ -1240,8 +1254,8 @@
             if (!demoNotice) {
                 demoNotice = document.createElement('div');
                 demoNotice.id = 'demo-notice';
-                demoNotice.style.cssText = 'padding: 12px; background: rgba(16, 185, 129, 0.1); border: 1px solid var(--primary); border-radius: 8px; margin-bottom: 15px; text-align: center; color: var(--primary);';
-                demoNotice.innerHTML = '<strong>📊 Demo Mode:</strong> Showing sample data. Configure Supabase to load real market data.';
+                demoNotice.style.cssText = 'padding: 12px; background: rgba(234, 57, 67, 0.1); border: 1px solid var(--red); border-radius: 8px; margin-bottom: 15px; text-align: center; color: var(--red);';
+                demoNotice.innerHTML = '<strong>⚠️ Demo Mode:</strong> Alpha Vantage API failed to load. Showing sample data. Check your API key or wait for rate limits to reset.';
                 tableContainer.parentNode.insertBefore(demoNotice, tableContainer);
             }
             
@@ -1301,8 +1315,29 @@
                     `;
                     return;
                 }
-            
-                await initializeDashboard();
+                
+                // Test Supabase connection
+                if (supabaseUrl.includes('YOUR_SUPABASE_URL')) {
+                    console.warn('⚠️ WARNING: Replace supabaseUrl and supabaseKey with your actual values');
+                    const tableBody = document.getElementById('stocks-table-body');
+                    tableBody.innerHTML = `
+                        <tr><td colspan="7" style="text-align: center; padding: 40px;">
+                            <div style="color: var(--red); margin-bottom: 15px;">
+                                <strong>⚠️ Configuration Required</strong>
+                            </div>
+                            <div style="text-align: left; max-width: 600px; margin: 0 auto;">
+                                <ol>
+                                    <li>Replace supabaseUrl and supabaseKey in the code with your actual values</li>
+                                    <li>Set up your Supabase tables (users, stocks, transactions, portfolio)</li>
+                                    <li>Add some sample stock data to your database</li>
+                                </ol>
+                            </div>
+                        </td></tr>
+                    `;
+                } else {
+                    // Initialize dashboard if configuration is present
+                    await initializeDashboard();
+                }
             }
         };
     </script>
