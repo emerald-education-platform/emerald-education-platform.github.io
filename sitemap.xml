@@ -1,33 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://emerald-education-platform.github.io/</loc>
-    <lastmod>2026-01-13</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>https://emerald-education-platform.github.io/individual/</loc>
-    <lastmod>2026-01-13</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://emerald-education-platform.github.io/teacherside/</loc>
-    <lastmod>2026-01-13</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://emerald-education-platform.github.io/balance/</loc>
-    <lastmod>2026-01-13</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://emerald-education-platform.github.io/aboutus/</loc>
-    <lastmod>2026-01-13</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
+<url>
+<loc>https://emerald-education-platform.github.io/</loc>
+<lastmod>2026-01-13T21:52:16-08:00</lastmod>
+</url>
+<url>
+<loc>https://emerald-education-platform.github.io/google2e980b3c144c0e6a.html</loc>
+<lastmod>2026-01-14T07:45:44-08:00</lastmod>
+</url>
+<url>
+<loc>https://emerald-education-platform.github.io/aboutus/</loc>
+<lastmod>2026-01-13T21:56:21-08:00</lastmod>
+</url>
+<url>
+<loc>https://emerald-education-platform.github.io/balance/</loc>
+<lastmod>2026-01-11T07:16:57-08:00</lastmod>
+</url>
+<url>
+<loc>https://emerald-education-platform.github.io/individual/</loc>
+<lastmod>2026-02-16T14:11:48-08:00</lastmod>
+</url>
+<url>
+<loc>https://emerald-education-platform.github.io/individual/browse-market.html</loc>
+<lastmod>2026-02-16T15:04:00-08:00</lastmod>
+</url>
+<url>
+<loc>https://emerald-education-platform.github.io/teacherside/</loc>
+<lastmod>2026-01-08T16:16:11-08:00</lastmod>
+</url>
 </urlset>
