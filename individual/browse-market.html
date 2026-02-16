@@ -1143,10 +1143,11 @@
         // Fetch individual stock quote from Yahoo Finance
         async function fetchYahooStockQuote(symbol) {
             try {
-                // Using Yahoo Finance API v8 endpoint
-                const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1d`;
+                // Using CORS proxy to access Yahoo Finance
+                const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1d`;
+                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`;
                 
-                const response = await fetch(url);
+                const response = await fetch(proxyUrl);
                 const data = await response.json();
                 
                 if (!data.chart || !data.chart.result || data.chart.result.length === 0) {
