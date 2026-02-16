@@ -564,9 +564,8 @@
         // ===========================================
         const supabaseUrl = 'https://nlcdgfpnreyjoomctoht.supabase.co';
         const supabaseKey = 'sb_publishable_8OPX1CdBvxjjGkJbf5nRPA_oz0iSd_p';
-        const ALPHA_VANTAGE_API_KEY = 'X4JONOZEN4GIJXLI';
         
-        // Stock symbols to track
+        // Stock symbols to track - Yahoo Finance supports many more without rate limits!
         const TRACKED_SYMBOLS = ['AAPL', 'GOOGL', 'MSFT', 'AMZN', 'TSLA', 'NVDA', 'META', 'NFLX', 'JPM', 'JNJ'];
         
         // Initialize Supabase client - will be set when library loads
@@ -1100,21 +1099,19 @@
             }
         }
         
-        // Load market data function - Now uses Alpha Vantage API
+        // Load market data function - Now uses Yahoo Finance API (faster, no API key needed!)
         async function loadMarketData() {
             try {
-                console.log('loadMarketData: Starting with Alpha Vantage API...');
+                console.log('loadMarketData: Starting with Yahoo Finance API...');
                 
                 // Show loading state
                 const tableBody = document.getElementById('stocks-table-body');
-                tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px;"><div class="loading-spinner"></div> Loading real-time market data from Alpha Vantage...</td></tr>';
-                
-                // Fetch stock data from Alpha Vantage for each symbol
-                const stockPromises = TRACKED_SYMBOLS.map(symbol => fetchStockQuote(symbol));
+                tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px;"><div class="loading-spinner"></div> Loading real-time market data from Yahoo Finance...</td></tr>';
                 
                 console.log(`Fetching data for ${TRACKED_SYMBOLS.length} stocks...`);
                 
-                // Wait for all requests to complete
+                // Fetch all stocks in parallel (Yahoo Finance allows this!)
+                const stockPromises = TRACKED_SYMBOLS.map(symbol => fetchYahooStockQuote(symbol));
                 const results = await Promise.allSettled(stockPromises);
                 
                 // Filter successful results
@@ -1125,7 +1122,7 @@
                 console.log(`Successfully loaded ${stocks.length} out of ${TRACKED_SYMBOLS.length} stocks`);
                 
                 if (stocks.length === 0) {
-                    console.warn('No stocks loaded from Alpha Vantage. Loading demo data.');
+                    console.warn('No stocks loaded from Yahoo Finance. Loading demo data.');
                     loadDemoStocks();
                     return;
                 }
@@ -1134,7 +1131,7 @@
                 stocksData = stocks;
                 displayStocks(stocks);
                 
-                console.log('Market data loaded successfully from Alpha Vantage');
+                console.log('Market data loaded successfully from Yahoo Finance');
                 
             } catch (error) {
                 console.error('Error loading market data:', error);
@@ -1143,37 +1140,33 @@
             }
         }
         
-        // Fetch individual stock quote from Alpha Vantage
-        async function fetchStockQuote(symbol) {
+        // Fetch individual stock quote from Yahoo Finance
+        async function fetchYahooStockQuote(symbol) {
             try {
-                const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${ALPHA_VANTAGE_API_KEY}`;
+                // Using Yahoo Finance API v8 endpoint
+                const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1d`;
                 
                 const response = await fetch(url);
                 const data = await response.json();
                 
-                // Check for API errors or rate limits
-                if (data['Error Message']) {
-                    console.error(`Error fetching ${symbol}:`, data['Error Message']);
-                    return null;
-                }
-                
-                if (data['Note']) {
-                    console.warn(`API rate limit reached:`, data['Note']);
-                    return null;
-                }
-                
-                const quote = data['Global Quote'];
-                
-                if (!quote || !quote['05. price']) {
+                if (!data.chart || !data.chart.result || data.chart.result.length === 0) {
                     console.warn(`No data available for ${symbol}`);
                     return null;
                 }
                 
-                // Parse the data into our format
-                const currentPrice = parseFloat(quote['05. price']);
-                const change = parseFloat(quote['09. change']);
-                const changePercent = parseFloat(quote['10. change percent'].replace('%', ''));
-                const volume = parseInt(quote['06. volume']);
+                const result = data.chart.result[0];
+                const quote = result.meta;
+                const indicators = result.indicators.quote[0];
+                
+                // Get the latest values
+                const currentPrice = quote.regularMarketPrice || quote.previousClose;
+                const previousClose = quote.chartPreviousClose || quote.previousClose;
+                const change = currentPrice - previousClose;
+                const changePercent = (change / previousClose) * 100;
+                
+                // Volume is the last value in the array
+                const volumes = indicators.volume.filter(v => v != null);
+                const volume = volumes.length > 0 ? volumes[volumes.length - 1] : 0;
                 
                 return {
                     symbol: symbol,
@@ -1182,7 +1175,7 @@
                     change: change,
                     change_percent: changePercent,
                     volume: volume,
-                    market_cap: getEstimatedMarketCap(symbol, currentPrice)
+                    market_cap: quote.marketCap || getEstimatedMarketCap(symbol, currentPrice)
                 };
                 
             } catch (error) {
@@ -1255,7 +1248,7 @@
                 demoNotice = document.createElement('div');
                 demoNotice.id = 'demo-notice';
                 demoNotice.style.cssText = 'padding: 12px; background: rgba(234, 57, 67, 0.1); border: 1px solid var(--red); border-radius: 8px; margin-bottom: 15px; text-align: center; color: var(--red);';
-                demoNotice.innerHTML = '<strong>⚠️ Demo Mode:</strong> Alpha Vantage API failed to load. Showing sample data. Check your API key or wait for rate limits to reset.';
+                demoNotice.innerHTML = '<strong>⚠️ Demo Mode:</strong> Yahoo Finance API failed to load. Showing sample data. Check your internet connection.';
                 tableContainer.parentNode.insertBefore(demoNotice, tableContainer);
             }
             
