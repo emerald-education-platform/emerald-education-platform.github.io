@@ -565,8 +565,74 @@
         const supabaseUrl = 'https://nlcdgfpnreyjoomctoht.supabase.co';
         const supabaseKey = 'sb_publishable_8OPX1CdBvxjjGkJbf5nRPA_oz0iSd_p';
         
-        // Stock symbols to track - Yahoo Finance supports many more without rate limits!
-        const TRACKED_SYMBOLS = ['AAPL', 'GOOGL', 'MSFT', 'AMZN', 'TSLA', 'NVDA', 'META', 'NFLX', 'JPM', 'JNJ'];
+        // Comprehensive stock list - 100+ most popular stocks
+        const TRACKED_SYMBOLS = [
+            // MEGA CAP TECH
+            'AAPL', 'MSFT', 'GOOGL', 'GOOG', 'AMZN', 'NVDA', 'META', 'TSLA', 'AVGO', 'ORCL', 'ADBE', 'CRM', 'CSCO', 'INTC', 'AMD', 'QCOM', 'TXN', 'NFLX', 'IBM', 'UBER', 'LYFT', 'SHOP', 'SQ', 'PYPL', 'SNAP', 'TWLO', 'ZM', 'DOCU', 'DDOG', 'SNOW', 'PLTR', 'RBLX', 'U',
+            
+            // FINANCE & BANKING
+            'JPM', 'BAC', 'WFC', 'C', 'GS', 'MS', 'BLK', 'SCHW', 'AXP', 'USB', 'PNC', 'TFC', 'COF', 'BK', 'STT', 'V', 'MA', 'COIN',
+            
+            // HEALTHCARE & PHARMA
+            'UNH', 'JNJ', 'LLY', 'ABBV', 'MRK', 'TMO', 'ABT', 'PFE', 'DHR', 'BMY', 'AMGN', 'GILD', 'CVS', 'CI', 'HUM', 'ISRG', 'VRTX', 'REGN', 'ZTS', 'SYK', 'BSX', 'MDT', 'ELV',
+            
+            // CONSUMER DISCRETIONARY
+            'AMZN', 'TSLA', 'HD', 'MCD', 'NKE', 'SBUX', 'LOW', 'TJX', 'BKNG', 'CMG', 'MAR', 'ABNB', 'F', 'GM', 'HLT', 'YUM', 'ROST', 'DPZ', 'LULU', 'ETSY',
+            
+            // CONSUMER STAPLES
+            'WMT', 'PG', 'COST', 'KO', 'PEP', 'PM', 'MO', 'MDLZ', 'CL', 'KMB', 'GIS', 'K', 'HSY', 'TSN', 'EL', 'STZ', 'TAP',
+            
+            // ENERGY
+            'XOM', 'CVX', 'COP', 'EOG', 'SLB', 'MPC', 'PSX', 'VLO', 'OXY', 'HAL', 'KMI', 'WMB', 'HES', 'DVN', 'FANG',
+            
+            // INDUSTRIALS
+            'BA', 'CAT', 'GE', 'RTX', 'UPS', 'HON', 'UNP', 'LMT', 'DE', 'MMM', 'GD', 'NOC', 'FDX', 'CSX', 'NSC', 'WM', 'EMR', 'ITW', 'PH',
+            
+            // MATERIALS
+            'LIN', 'APD', 'SHW', 'FCX', 'NEM', 'ECL', 'DD', 'DOW', 'NUE', 'VMC', 'MLM',
+            
+            // REAL ESTATE & UTILITIES
+            'AMT', 'PLD', 'CCI', 'EQIX', 'PSA', 'DLR', 'O', 'WELL', 'SPG', 'NEE', 'DUK', 'SO', 'D', 'AEP', 'EXC', 'XEL',
+            
+            // TELECOMMUNICATIONS
+            'T', 'VZ', 'TMUS', 'CMCSA', 'CHTR', 'DIS',
+            
+            // ENTERTAINMENT & MEDIA
+            'DIS', 'NFLX', 'WBD', 'PARA', 'LYV', 'SPOT', 'EA', 'TTWO', 'ATVI', 'ROKU',
+            
+            // SEMICONDUCTORS
+            'NVDA', 'TSM', 'AVGO', 'QCOM', 'AMD', 'INTC', 'TXN', 'ADI', 'AMAT', 'LRCX', 'KLAC', 'MCHP', 'NXPI', 'MRVL', 'ON',
+            
+            // E-COMMERCE & RETAIL
+            'AMZN', 'WMT', 'HD', 'COST', 'TGT', 'LOW', 'BBY', 'DG', 'DLTR', 'RVLV', 'CHWY', 'W', 'FTCH',
+            
+            // AUTOMOTIVE
+            'TSLA', 'F', 'GM', 'TM', 'HMC', 'STLA', 'RIVN', 'LCID',
+            
+            // AEROSPACE & DEFENSE
+            'BA', 'LMT', 'RTX', 'NOC', 'GD', 'LHX', 'TDG', 'HWM',
+            
+            // BIOTECH
+            'GILD', 'AMGN', 'VRTX', 'REGN', 'BIIB', 'MRNA', 'BNTX', 'ALNY', 'SGEN', 'INCY',
+            
+            // INSURANCE
+            'BRK.B', 'PGR', 'TRV', 'ALL', 'AIG', 'MET', 'PRU', 'AFL', 'AJG', 'CB',
+            
+            // CLOUD & SOFTWARE
+            'CRM', 'ORCL', 'ADBE', 'NOW', 'INTU', 'WDAY', 'PANW', 'CRWD', 'ZS', 'FTNT', 'TEAM', 'VEEV', 'DDOG', 'NET', 'HUBS', 'OKTA',
+            
+            // CYBERSECURITY
+            'CRWD', 'PANW', 'ZS', 'FTNT', 'CHKP', 'OKTA', 'S', 'CYBR',
+            
+            // PAYMENTS & FINTECH
+            'V', 'MA', 'PYPL', 'SQ', 'COIN', 'AFRM', 'SOFI', 'NU', 'UPST',
+            
+            // STREAMING & SOCIAL
+            'NFLX', 'DIS', 'SPOT', 'ROKU', 'SNAP', 'PINS', 'MTCH', 'BMBL',
+            
+            // AI & DATA
+            'NVDA', 'AI', 'PLTR', 'SNOW', 'SPLK', 'DDOG', 'MDB', 'ESTC'
+        ];
         
         // Initialize Supabase client - will be set when library loads
         let supabase = null;
@@ -1161,18 +1227,43 @@
         // Helper function to get company names
         function getCompanyName(symbol) {
             const names = {
-                'AAPL': 'Apple Inc.',
-                'GOOGL': 'Alphabet Inc.',
-                'MSFT': 'Microsoft Corp.',
-                'AMZN': 'Amazon.com Inc.',
-                'TSLA': 'Tesla Inc.',
-                'NVDA': 'NVIDIA Corp.',
-                'META': 'Meta Platforms Inc.',
-                'NFLX': 'Netflix Inc.',
-                'JPM': 'JPMorgan Chase & Co.',
-                'JNJ': 'Johnson & Johnson'
+                // Major Tech
+                'AAPL': 'Apple Inc.', 'MSFT': 'Microsoft Corp.', 'GOOGL': 'Alphabet Inc.', 'GOOG': 'Alphabet Inc.', 
+                'AMZN': 'Amazon.com Inc.', 'META': 'Meta Platforms Inc.', 'NVDA': 'NVIDIA Corp.', 'TSLA': 'Tesla Inc.',
+                'NFLX': 'Netflix Inc.', 'AVGO': 'Broadcom Inc.', 'ORCL': 'Oracle Corp.', 'ADBE': 'Adobe Inc.',
+                'CRM': 'Salesforce Inc.', 'CSCO': 'Cisco Systems', 'INTC': 'Intel Corp.', 'AMD': 'Advanced Micro Devices',
+                'QCOM': 'Qualcomm Inc.', 'TXN': 'Texas Instruments', 'IBM': 'IBM Corp.', 'UBER': 'Uber Technologies',
+                'LYFT': 'Lyft Inc.', 'SHOP': 'Shopify Inc.', 'SQ': 'Block Inc.', 'PYPL': 'PayPal Holdings',
+                'SNAP': 'Snap Inc.', 'TWLO': 'Twilio Inc.', 'ZM': 'Zoom Video', 'DOCU': 'DocuSign Inc.',
+                // Finance
+                'JPM': 'JPMorgan Chase', 'BAC': 'Bank of America', 'WFC': 'Wells Fargo', 'C': 'Citigroup Inc.',
+                'GS': 'Goldman Sachs', 'MS': 'Morgan Stanley', 'BLK': 'BlackRock Inc.', 'SCHW': 'Charles Schwab',
+                'AXP': 'American Express', 'V': 'Visa Inc.', 'MA': 'Mastercard Inc.', 'COIN': 'Coinbase Global',
+                // Healthcare
+                'UNH': 'UnitedHealth Group', 'JNJ': 'Johnson & Johnson', 'LLY': 'Eli Lilly', 'ABBV': 'AbbVie Inc.',
+                'MRK': 'Merck & Co.', 'TMO': 'Thermo Fisher', 'ABT': 'Abbott Labs', 'PFE': 'Pfizer Inc.',
+                'CVS': 'CVS Health', 'GILD': 'Gilead Sciences', 'AMGN': 'Amgen Inc.', 'VRTX': 'Vertex Pharma',
+                // Consumer
+                'WMT': 'Walmart Inc.', 'HD': 'Home Depot', 'MCD': 'McDonald\'s Corp.', 'NKE': 'Nike Inc.',
+                'SBUX': 'Starbucks Corp.', 'LOW': 'Lowe\'s Companies', 'TGT': 'Target Corp.', 'COST': 'Costco Wholesale',
+                'PG': 'Procter & Gamble', 'KO': 'Coca-Cola Co.', 'PEP': 'PepsiCo Inc.', 'DIS': 'Walt Disney Co.',
+                // Energy
+                'XOM': 'Exxon Mobil', 'CVX': 'Chevron Corp.', 'COP': 'ConocoPhillips', 'SLB': 'Schlumberger',
+                // Industrial
+                'BA': 'Boeing Co.', 'CAT': 'Caterpillar Inc.', 'GE': 'General Electric', 'RTX': 'Raytheon Tech',
+                'UPS': 'United Parcel Service', 'HON': 'Honeywell Intl', 'LMT': 'Lockheed Martin', 'DE': 'Deere & Co.',
+                // Communication
+                'T': 'AT&T Inc.', 'VZ': 'Verizon Comm.', 'TMUS': 'T-Mobile US', 'CMCSA': 'Comcast Corp.',
+                // AI & Cloud
+                'PLTR': 'Palantir Tech', 'SNOW': 'Snowflake Inc.', 'DDOG': 'Datadog Inc.', 'AI': 'C3.ai Inc.',
+                'CRWD': 'CrowdStrike', 'PANW': 'Palo Alto Networks', 'NOW': 'ServiceNow', 'ZS': 'Zscaler Inc.',
+                // Auto
+                'F': 'Ford Motor Co.', 'GM': 'General Motors', 'RIVN': 'Rivian Automotive', 'LCID': 'Lucid Motors',
+                // Other Popular
+                'BRK.B': 'Berkshire Hathaway', 'TSM': 'Taiwan Semi', 'SPOT': 'Spotify Tech', 'ROKU': 'Roku Inc.'
             };
-            return names[symbol] || symbol;
+            // Return company name if found, otherwise use symbol as company name
+            return names[symbol] || `${symbol} Inc.`;
         }
         
         // Helper function to estimate market cap (rough estimates)
