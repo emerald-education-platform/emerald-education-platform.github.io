@@ -1,0 +1,1310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browse Market - Emerald Exchange</title>
+    <link rel="icon" href="ESElogoIcon.png" type="image/png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js" defer></script>
+    <style>
+        :root {
+            --primary: #10b981;          /* Emerald green - kept as accent */
+            --primary-dark: #0da271;
+            --dark-bg: #121212;           /* Main background */
+            --card-bg: #1e1e1e;            /* Cards / containers */
+            --sidebar-bg: #1a1a1a;          /* Sidebar background */
+            --text-primary: #e0e0e0;        /* Primary text */
+            --text-secondary: #a0a0a0;      /* Secondary text */
+            --border-dark: #2c2c2c;         /* Borders */
+            --green: #16c784;                /* Positive change */
+            --red: #ea3943;                   /* Negative change */
+            --hover-bg: #2a2a2a;              /* Hover background */
+            --table-header-bg: #252525;        /* Table header */
+            --input-bg: #2a2a2a;                /* Input fields */
+            --shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            margin: 0;
+            background: var(--dark-bg);
+            color: var(--text-primary);
+        }
+        
+        .dashboard-container {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--border-dark);
+            padding: 20px;
+            width: 250px;
+            min-height: 100vh;
+            position: relative;
+        }
+        
+        .logo { 
+            font-size: 1.5rem; 
+            font-weight: bold; 
+            color: var(--primary); 
+            margin-bottom: 30px; 
+        }
+        
+        .nav-item { 
+            padding: 12px 15px; 
+            margin: 5px 0; 
+            border-radius: 8px; 
+            cursor: pointer;
+            transition: background 0.2s;
+            color: var(--text-secondary);
+        }
+        
+        .nav-item.active { 
+            background: var(--hover-bg); 
+            color: var(--primary); 
+            font-weight: 600; 
+        }
+        
+        .nav-item:hover { 
+            background: var(--hover-bg); 
+            color: var(--text-primary);
+        }
+        
+        .sidebar-footer {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+        }
+        
+        /* Main Content */
+        .main-content { 
+            flex: 1;
+            padding: 20px;
+            max-width: 100%;
+            overflow-x: auto;
+        }
+        
+        /* Market Header */
+        .market-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .search-box {
+            width: 300px;
+            max-width: 100%;
+            padding: 12px 20px;
+            border: 1px solid var(--border-dark);
+            border-radius: 25px;
+            font-size: 14px;
+            background: var(--input-bg);
+            color: var(--text-primary);
+        }
+        .search-box::placeholder {
+            color: var(--text-secondary);
+        }
+        
+        /* Loading Indicator */
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid var(--border-dark);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Stocks Table */
+        .stocks-table-container {
+            background: var(--card-bg);
+            border-radius: 12px;
+            overflow-x: auto;
+            box-shadow: var(--shadow);
+        }
+        
+        .stocks-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 800px;
+        }
+        
+        .stocks-table th {
+            background: var(--table-header-bg);
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid var(--border-dark);
+            white-space: nowrap;
+            color: var(--text-secondary);
+        }
+        
+        .stocks-table td {
+            padding: 15px;
+            border-bottom: 1px solid var(--border-dark);
+            color: var(--text-primary);
+        }
+        
+        .stocks-table tbody tr {
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .stocks-table tbody tr:hover { 
+            background: var(--hover-bg); 
+        }
+        
+        .stock-symbol { 
+            font-weight: 600; 
+            color: var(--primary); 
+        }
+        
+        .stock-name { 
+            color: var(--text-secondary); 
+            font-size: 14px; 
+        }
+        
+        .positive { color: var(--green); }
+        .negative { color: var(--red); }
+        
+        /* Trading Panel */
+        .trading-panel {
+            position: fixed;
+            right: -400px;
+            top: 0;
+            width: 380px;
+            height: 100vh;
+            background: var(--card-bg);
+            box-shadow: -5px 0 25px rgba(0,0,0,0.7);
+            transition: right 0.3s ease;
+            padding: 25px;
+            z-index: 1000;
+            overflow-y: auto;
+            border-left: 1px solid var(--border-dark);
+        }
+        
+        .trading-panel.active { 
+            right: 0; 
+        }
+        
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border-dark);
+        }
+        
+        .close-panel { 
+            cursor: pointer; 
+            font-size: 24px; 
+            color: var(--text-secondary);
+            line-height: 1;
+        }
+        
+        .close-panel:hover {
+            color: var(--text-primary);
+        }
+        
+        /* Buy/Sell Form */
+        .trade-form label {
+            display: block;
+            margin-top: 15px;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+        
+        .trade-form input, 
+        .trade-form select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border-dark);
+            border-radius: 8px;
+            font-size: 16px;
+            background: var(--input-bg);
+            color: var(--text-primary);
+        }
+        .trade-form select option {
+            background: var(--card-bg);
+        }
+        
+        .btn-buy, .btn-sell {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: opacity 0.2s;
+        }
+        
+        .btn-buy { 
+            background: var(--green); 
+            color: white; 
+        }
+        
+        .btn-buy:hover {
+            opacity: 0.9;
+        }
+        
+        .btn-sell { 
+            background: var(--red); 
+            color: white; 
+        }
+        
+        .btn-sell:hover {
+            opacity: 0.9;
+        }
+        
+        /* Quick Trade Button */
+        .quick-trade-btn {
+            padding: 8px 20px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
+            letter-spacing: 0.3px;
+        }
+        
+        .quick-trade-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+            background: linear-gradient(135deg, #12d392 0%, #0fb67d 100%);
+        }
+        
+        .quick-trade-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 6px rgba(16, 185, 129, 0.2);
+        }
+        
+        #stock-info-panel {
+            background: var(--hover-bg);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        #stock-info-panel p {
+            margin: 8px 0;
+            color: var(--text-primary);
+        }
+        
+        #order-summary {
+            background: var(--hover-bg);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+        
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 999;
+        }
+        
+        .modal-overlay.active {
+            display: block;
+        }
+        
+        #stock-detail-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            z-index: 1001;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            border: 1px solid var(--border-dark);
+        }
+        
+        #stock-detail-modal.active {
+            display: block;
+        }
+        
+        .mobile-menu-toggle {
+            display: none;
+        }
+        
+        .error-message {
+            background: #442222;
+            color: #ff8a8a;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid var(--red);
+        }
+        
+        .info-message {
+            background: #1e3a3a;
+            color: #a0d6d6;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid var(--primary);
+        }
+        
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .dashboard-container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                min-height: auto;
+                display: none;
+            }
+            
+            .sidebar.mobile-visible {
+                display: block;
+            }
+            
+            .sidebar-footer {
+                position: static;
+                margin-top: 20px;
+            }
+            
+            .mobile-menu-toggle {
+                display: block;
+                position: fixed;
+                top: 15px;
+                left: 15px;
+                z-index: 101;
+                background: var(--primary);
+                color: white;
+                border: none;
+                border-radius: 50%;
+                width: 40px;
+                height: 40px;
+                font-size: 20px;
+                cursor: pointer;
+            }
+            
+            .trading-panel {
+                width: 100%;
+                right: -100%;
+            }
+            
+            .market-header {
+                padding: 15px;
+            }
+            
+            .search-box {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="mobile-menu-toggle" onclick="toggleSidebar()">☰</button>
+    
+    <div class="modal-overlay" id="modalOverlay" onclick="closeModal()"></div>
+    
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar">
+            <div class="logo">Emerald Exchange</div>
+            <div class="nav-item active">
+                <i class="fas fa-chart-line"></i> Browse Market
+            </div>
+            <div class="nav-item">
+                <i class="fas fa-wallet"></i> My Portfolio
+            </div>
+            <div class="nav-item">
+                <i class="fas fa-star"></i> Watchlist
+            </div>
+            <div class="nav-item">
+                <i class="fas fa-history"></i> Transactions
+            </div>
+            <div class="sidebar-footer">
+                <div class="nav-item" onclick="logout()">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Market Header -->
+            <div class="market-header">
+                <h1 style="margin: 0; color: var(--text-primary);">Browse Market</h1>
+                <input type="text" class="search-box" placeholder="Search stocks (AAPL, TSLA, etc.)" 
+                       onkeyup="searchStocks(this.value)">
+                <div>
+                    <span id="balance-display" style="color: var(--text-primary);">Emeralds: $10,000.00</span>
+                    <button onclick="refreshMarketData()" 
+                            style="margin-left: 15px; padding: 8px 15px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer;">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+            </div>
+            
+            <div id="api-info" class="info-message">
+                <strong>Note:</strong> Real-time stock data powered by Alpha Vantage API. Data updates every refresh.
+            </div>
+            
+            <!-- Stocks Table -->
+            <div class="stocks-table-container">
+                <table class="stocks-table">
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Name</th>
+                            <th>Price</th>
+                            <th>Change</th>
+                            <th>% Change</th>
+                            <th>Volume</th>
+                            <th>Market Cap</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stocks-table-body">
+                        <tr><td colspan="8" style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                            <div class="loading-spinner"></div> Loading real market data...
+                        </td></tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Stock Details Modal -->
+            <div id="stock-detail-modal">
+                <h2 id="modal-symbol" style="color: var(--text-primary);"></h2>
+                <div id="modal-details" style="color: var(--text-secondary);"></div>
+                <button onclick="closeModal()" 
+                        style="margin-top: 20px; padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer;">
+                    Close
+                </button>
+            </div>
+        </div>
+        
+        <!-- Trading Panel -->
+        <div class="trading-panel" id="tradingPanel">
+            <div class="panel-header">
+                <h2 id="trade-symbol" style="color: var(--text-primary);">Trade Stock</h2>
+                <span class="close-panel" onclick="closeTradingPanel()">×</span>
+            </div>
+            
+            <div id="stock-info-panel">
+                <p><strong>Current Price:</strong> $<span id="current-price">0.00</span></p>
+                <p><strong>Available Cash:</strong> $<span id="available-cash">10,000.00</span></p>
+                <p id="available-shares-display"></p>
+            </div>
+            
+            <div class="trade-form">
+                <label>Order Type:</label>
+                <select id="order-type">
+                    <option value="BUY">Buy</option>
+                    <option value="SELL">Sell</option>
+                </select>
+                
+                <label>Quantity:</label>
+                <input type="number" id="trade-quantity" min="1" value="1">
+                
+                <label>Price (per share):</label>
+                <input type="number" id="trade-price" step="0.01" value="0.00" readonly 
+                       style="background: #2a2a2a; color: var(--text-primary); border: 1px solid var(--border-dark);">
+                
+                <div id="order-summary">
+                    <p><strong>Estimated Total:</strong> $<span id="estimated-total">0.00</span></p>
+                </div>
+                
+                <button class="btn-buy" onclick="executeTrade()" id="execute-btn">
+                    Execute Buy Order
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // ===========================================
+        // CRITICAL FIXES - REPLACE THESE WITH YOUR VALUES
+        // ===========================================
+        const supabaseUrl = 'https://nlcdgfpnreyjoomctoht.supabase.co';
+        const supabaseKey = 'sb_publishable_8OPX1CdBvxjjGkJbf5nRPA_oz0iSd_p';
+        
+        // Initialize Supabase client - will be set when library loads
+        let supabase = null;
+        
+        // Wait for Supabase library to load
+        function initSupabase() {
+            if (typeof window.supabase !== 'undefined') {
+                supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+                console.log('Supabase client initialized successfully');
+                return true;
+            }
+            console.error('Supabase library not loaded yet');
+            return false;
+        }
+        
+        // Alpha Vantage API Configuration
+        const API_KEY = 'X4JONOZEN4GIJXLI'; // Replace with your Alpha Vantage key
+        const API_BASE = 'https://www.alphavantage.co/query';
+        
+        // Application State
+        let currentUser = null;
+        let stocksData = [];
+        let userPortfolio = [];
+        let userTransactions = [];
+        let userCash = 10000.00;
+        let selectedStock = null;
+        
+        // Popular stocks to track
+        const TRACKED_SYMBOLS = ['AAPL', 'GOOGL', 'MSFT', 'AMZN', 'TSLA', 'NVDA', 'META'];
+        
+        // Initialize application
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuth();
+        });
+        
+        async function checkAuth() {
+            const { data: { user }, error } = await supabase.auth.getUser();
+            
+            if (error) {
+                console.error('Auth check error:', error);
+                window.location.href = '/individual/index.html';
+                return;
+            }
+            
+            if (!user) {
+                console.log('No user found, redirecting to login...');
+                window.location.href = '/individual/index.html';
+                return;
+            }
+            
+            currentUser = user;
+            console.log('User authenticated:', user.email);
+            await initializeApp();
+        }
+        
+        async function initializeApp() {
+            await loadMarketData();
+            await updateBalanceDisplay();
+        }
+        
+        // Fix 1: Enhanced logout function
+        async function logout() {
+            try {
+                console.log('Attempting logout...');
+                const { error } = await supabase.auth.signOut();
+                
+                if (error) {
+                    console.error('Logout error:', error);
+                    alert('Logout failed: ' + error.message);
+                    return;
+                }
+                
+                console.log('Logout successful');
+                window.location.href = '/individual/index.html';
+            } catch (err) {
+                console.error('Unexpected logout error:', err);
+                alert('An unexpected error occurred during logout');
+            }
+        }
+        
+        // Fix 2: Fetch stock data with better error handling
+        async function fetchStockQuote(symbol) {
+            try {
+                const url = `${API_BASE}?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${API_KEY}`;
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data['Note']) {
+                    console.warn('API rate limit:', data['Note']);
+                    return null;
+                }
+                
+                if (data['Global Quote']) {
+                    const quote = data['Global Quote'];
+                    return {
+                        symbol: symbol,
+                        name: await getCompanyName(symbol),
+                        current_price: parseFloat(quote['05. price'] || 0),
+                        change: parseFloat(quote['09. change'] || 0),
+                        change_percent: parseFloat((quote['10. change percent'] || '0').replace('%', '')),
+                        volume: parseInt(quote['06. volume'] || 0),
+                        market_cap: 0
+                    };
+                }
+                return null;
+            } catch (error) {
+                console.error(`Error fetching ${symbol}:`, error);
+                return null;
+            }
+        }
+        
+        async function getCompanyName(symbol) {
+            const companyNames = {
+                'AAPL': 'Apple Inc.',
+                'GOOGL': 'Alphabet Inc.',
+                'MSFT': 'Microsoft Corp.',
+                'AMZN': 'Amazon.com Inc.',
+                'TSLA': 'Tesla Inc.',
+                'NVDA': 'NVIDIA Corp.',
+                'META': 'Meta Platforms Inc.',
+                'NFLX': 'Netflix Inc.',
+                'JPM': 'JPMorgan Chase & Co.',
+                'JNJ': 'Johnson & Johnson'
+            };
+            return companyNames[symbol] || symbol;
+        }
+        
+        // Fix 3: Improved market data loading
+        async function loadMarketData() {
+            const tbody = document.getElementById('stocks-table-body');
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px;"><div class="loading-spinner"></div> Fetching real market data...</td></tr>';
+            
+            stocksData = [];
+            
+            // Fetch stocks sequentially with delay to respect API limits
+            for (let i = 0; i < TRACKED_SYMBOLS.length; i++) {
+                const symbol = TRACKED_SYMBOLS[i];
+                
+                if (API_KEY === 'X4JONOZEN4GIJXLI' && i > 0) {
+                    // Demo key is very limited - use fallback after first stock
+                    stocksData.push(getDemoStock(symbol));
+                    displayStocks(stocksData);
+                    continue;
+                }
+                
+                const stockData = await fetchStockQuote(symbol);
+                
+                if (stockData) {
+                    stocksData.push(stockData);
+                    displayStocks(stocksData);
+                } else {
+                    stocksData.push(getDemoStock(symbol));
+                    displayStocks(stocksData);
+                }
+                
+                // Add small delay between requests (even for demo mode)
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+            
+            if (stocksData.length === 0) {
+                loadDemoData();
+            }
+        }
+        
+        // Fallback demo data
+        function getDemoStock(symbol) {
+            const demoStocks = {
+                'AAPL': { symbol: 'AAPL', name: 'Apple Inc.', current_price: 175.25, change: 1.25, change_percent: 0.72, volume: 58392000, market_cap: 2750000000000 },
+                'GOOGL': { symbol: 'GOOGL', name: 'Alphabet Inc.', current_price: 135.50, change: -0.75, change_percent: -0.55, volume: 28450000, market_cap: 1700000000000 },
+                'MSFT': { symbol: 'MSFT', name: 'Microsoft Corp.', current_price: 330.15, change: 2.15, change_percent: 0.66, volume: 25430000, market_cap: 2450000000000 },
+                'AMZN': { symbol: 'AMZN', name: 'Amazon.com Inc.', current_price: 145.80, change: -1.20, change_percent: -0.82, volume: 42350000, market_cap: 1500000000000 },
+                'TSLA': { symbol: 'TSLA', name: 'Tesla Inc.', current_price: 235.80, change: 5.20, change_percent: 2.26, volume: 102345000, market_cap: 750000000000 },
+                'NVDA': { symbol: 'NVDA', name: 'NVIDIA Corp.', current_price: 485.50, change: 8.75, change_percent: 1.84, volume: 45230000, market_cap: 1200000000000 },
+                'META': { symbol: 'META', name: 'Meta Platforms Inc.', current_price: 312.40, change: -2.30, change_percent: -0.73, volume: 18450000, market_cap: 800000000000 },
+                'NFLX': { symbol: 'NFLX', name: 'Netflix Inc.', current_price: 485.20, change: 3.40, change_percent: 0.71, volume: 3245000, market_cap: 215000000000 },
+                'JPM': { symbol: 'JPM', name: 'JPMorgan Chase & Co.', current_price: 145.30, change: -0.80, change_percent: -0.55, volume: 8540000, market_cap: 420000000000 },
+                'JNJ': { symbol: 'JNJ', name: 'Johnson & Johnson', current_price: 152.10, change: 0.45, change_percent: 0.30, volume: 4521000, market_cap: 390000000000 }
+            };
+            return demoStocks[symbol] || {
+                symbol: symbol,
+                name: symbol,
+                current_price: 100.00,
+                change: 0.00,
+                change_percent: 0.00,
+                volume: 1000000,
+                market_cap: 1000000000
+            };
+        }
+        
+        function loadDemoData() {
+            stocksData = TRACKED_SYMBOLS.map(symbol => getDemoStock(symbol));
+            displayStocks(stocksData);
+            
+            document.getElementById('api-info').innerHTML = `
+                <strong>Demo Mode:</strong> Showing sample data. Get your free API key at 
+                <a href="https://www.alphavantage.co/support/#api-key" target="_blank">alphavantage.co</a> 
+                for real-time market data.
+            `;
+        }
+        
+        // Fix 4: Display stocks properly
+        function displayStocks(stocks) {
+            const tbody = document.getElementById('stocks-table-body');
+            
+            if (!stocks || stocks.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px;">No stocks found</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = '';
+            
+            stocks.forEach(stock => {
+                const changeClass = stock.change >= 0 ? 'positive' : 'negative';
+                const changeSign = stock.change >= 0 ? '+' : '';
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>
+                        <div class="stock-symbol">${stock.symbol}</div>
+                    </td>
+                    <td>
+                        <div class="stock-name">${stock.name}</div>
+                    </td>
+                    <td>$${stock.current_price.toFixed(2)}</td>
+                    <td class="${changeClass}">${changeSign}${stock.change.toFixed(2)}</td>
+                    <td class="${changeClass}">${changeSign}${stock.change_percent.toFixed(2)}%</td>
+                    <td>${formatNumber(stock.volume)}</td>
+                    <td>${stock.market_cap > 0 ? '$' + formatMarketCap(stock.market_cap) : 'N/A'}</td>
+                    <td>
+                        <button onclick="event.stopPropagation(); openTradingPanel('${stock.symbol}', ${stock.current_price})" 
+                                style="padding: 8px 15px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer;">
+                            Trade
+                        </button>
+                    </td>
+                `;
+                
+                row.onclick = () => showStockDetails(stock);
+                tbody.appendChild(row);
+            });
+        }
+        
+        // Fix 5: Open trading panel
+        function openTradingPanel(symbol, price) {
+            selectedStock = stocksData.find(s => s.symbol === symbol);
+            
+            if (!selectedStock) {
+                alert('Stock not found');
+                return;
+            }
+            
+            document.getElementById('trade-symbol').textContent = `Trade ${symbol}`;
+            document.getElementById('current-price').textContent = price.toFixed(2);
+            document.getElementById('trade-price').value = price.toFixed(2);
+            document.getElementById('available-cash').textContent = userCash.toFixed(2);
+            
+            updateExecuteButton();
+            calculateEstimatedTotal();
+            
+            document.getElementById('tradingPanel').classList.add('active');
+            
+            loadAvailableShares(symbol);
+        }
+        
+        function closeTradingPanel() {
+            document.getElementById('tradingPanel').classList.remove('active');
+            selectedStock = null;
+        }
+        
+        // Fix 6: Load available shares
+        function loadAvailableShares(symbol) {
+            const holding = userPortfolio.find(p => p.stock_symbol === symbol);
+            const sharesDisplay = document.getElementById('available-shares-display');
+            
+            if (holding && holding.total_shares > 0) {
+                sharesDisplay.innerHTML = `<strong>You own:</strong> ${holding.total_shares} shares`;
+            } else {
+                sharesDisplay.innerHTML = '<strong>You own:</strong> 0 shares';
+            }
+        }
+        
+        // Fix 7: Calculate estimated total
+        function calculateEstimatedTotal() {
+            const quantity = parseInt(document.getElementById('trade-quantity').value) || 0;
+            const price = parseFloat(document.getElementById('trade-price').value) || 0;
+            const total = quantity * price;
+            
+            document.getElementById('estimated-total').textContent = total.toFixed(2);
+        }
+        
+        // Fix 8: Update execute button
+        function updateExecuteButton() {
+            const orderType = document.getElementById('order-type').value;
+            const btn = document.getElementById('execute-btn');
+            
+            if (orderType === 'BUY') {
+                btn.textContent = 'Execute Buy Order';
+                btn.className = 'btn-buy';
+            } else {
+                btn.textContent = 'Execute Sell Order';
+                btn.className = 'btn-sell';
+            }
+        }
+        
+        // Fix 9: Execute trade with Supabase integration
+        async function executeTrade() {
+            if (!currentUser) {
+                alert('Please log in first');
+                window.location.href = '/individual/index.html';
+                return;
+            }
+            
+            if (!selectedStock) {
+                alert('Please select a stock first');
+                return;
+            }
+            
+            const orderType = document.getElementById('order-type').value;
+            const quantity = parseInt(document.getElementById('trade-quantity').value);
+            const price = parseFloat(document.getElementById('trade-price').value);
+            
+            if (!quantity || quantity < 1) {
+                alert('Please enter a valid quantity');
+                return;
+            }
+            
+            if (!price || price <= 0) {
+                alert('Please enter a valid price');
+                return;
+            }
+            
+            const totalCost = quantity * price;
+            
+            // Check if user has enough cash for buy orders
+            if (orderType === 'BUY') {
+                if (userCash < totalCost) {
+                    alert(`Insufficient funds. You need $${totalCost.toFixed(2)} but only have $${userCash.toFixed(2)}`);
+                    return;
+                }
+            }
+            
+            try {
+                // Insert transaction into Supabase
+                const { data, error } = await supabase
+                    .from('transactions')
+                    .insert({
+                        user_id: currentUser.id,
+                        stock_symbol: selectedStock.symbol,
+                        type: orderType,
+                        quantity: quantity,
+                        price: price,
+                        total_amount: totalCost
+                    });
+                
+                if (error) throw error;
+                
+                // Update local state
+                if (orderType === 'BUY') {
+                    userCash -= totalCost;
+                    
+                    const existingHolding = userPortfolio.find(p => p.stock_symbol === selectedStock.symbol);
+                    if (existingHolding) {
+                        existingHolding.total_shares += quantity;
+                    } else {
+                        userPortfolio.push({
+                            stock_symbol: selectedStock.symbol,
+                            total_shares: quantity,
+                            current_price: price
+                        });
+                    }
+                    
+                    userTransactions.push({
+                        stock_symbol: selectedStock.symbol,
+                        type: 'BUY',
+                        quantity: quantity,
+                        price: price,
+                        timestamp: new Date()
+                    });
+                    
+                    alert(`Successfully bought ${quantity} shares of ${selectedStock.symbol} for $${totalCost.toFixed(2)}`);
+                } else {
+                    const holding = userPortfolio.find(p => p.stock_symbol === selectedStock.symbol);
+                    
+                    if (!holding || holding.total_shares < quantity) {
+                        alert(`You only have ${holding?.total_shares || 0} shares available to sell`);
+                        return;
+                    }
+                    
+                    userCash += totalCost;
+                    holding.total_shares -= quantity;
+                    
+                    if (holding.total_shares === 0) {
+                        userPortfolio = userPortfolio.filter(p => p.stock_symbol !== selectedStock.symbol);
+                    }
+                    
+                    userTransactions.push({
+                        stock_symbol: selectedStock.symbol,
+                        type: 'SELL',
+                        quantity: quantity,
+                        price: price,
+                        timestamp: new Date()
+                    });
+                    
+                    alert(`Successfully sold ${quantity} shares of ${selectedStock.symbol} for $${totalCost.toFixed(2)}`);
+                }
+                
+                closeTradingPanel();
+                await updateBalanceDisplay();
+                
+            } catch (error) {
+                console.error('Trade execution error:', error);
+                alert('Error executing trade: ' + error.message);
+            }
+        }
+        
+        // Fix 10: Update balance display
+        async function updateBalanceDisplay() {
+            let portfolioValue = 0;
+            
+            userPortfolio.forEach(holding => {
+                const stock = stocksData.find(s => s.symbol === holding.stock_symbol);
+                if (stock) {
+                    portfolioValue += holding.total_shares * stock.current_price;
+                }
+            });
+            
+            const totalValue = userCash + portfolioValue;
+            
+            document.getElementById('balance-display').innerHTML = 
+                `Cash: $${userCash.toFixed(2)} | Portfolio: $${portfolioValue.toFixed(2)} | Total: $${totalValue.toFixed(2)}`;
+        }
+        
+        // Fix 11: Search stocks
+        function searchStocks(query) {
+            if (!query.trim()) {
+                displayStocks(stocksData);
+                return;
+            }
+            
+            const filtered = stocksData.filter(stock => 
+                stock.symbol.toLowerCase().includes(query.toLowerCase()) ||
+                stock.name.toLowerCase().includes(query.toLowerCase())
+            );
+            
+            displayStocks(filtered);
+        }
+        
+        // Fix 12: Show stock details modal
+        function showStockDetails(stock) {
+            document.getElementById('modal-symbol').textContent = `${stock.symbol} - ${stock.name}`;
+            
+            const details = `
+                <p><strong>Current Price:</strong> $${stock.current_price.toFixed(2)}</p>
+                <p><strong>Today's Change:</strong> <span class="${stock.change >= 0 ? 'positive' : 'negative'}">
+                    ${stock.change >= 0 ? '+' : ''}${stock.change.toFixed(2)} (${stock.change >= 0 ? '+' : ''}${stock.change_percent.toFixed(2)}%)
+                </span></p>
+                <p><strong>Volume:</strong> ${formatNumber(stock.volume)}</p>
+                <p><strong>Market Cap:</strong> ${stock.market_cap > 0 ? '$' + formatMarketCap(stock.market_cap) : 'N/A'}</p>
+                <p><strong>Last Updated:</strong> ${new Date().toLocaleString()}</p>
+            `;
+            
+            document.getElementById('modal-details').innerHTML = details;
+            document.getElementById('stock-detail-modal').classList.add('active');
+            document.getElementById('modalOverlay').classList.add('active');
+        }
+        
+        function closeModal() {
+            document.getElementById('stock-detail-modal').classList.remove('active');
+            document.getElementById('modalOverlay').classList.remove('active');
+        }
+        
+        // Fix 13: Refresh market data
+        async function refreshMarketData() {
+            await loadMarketData();
+            await updateBalanceDisplay();
+        }
+        
+        // Fix 14: Mobile sidebar toggle
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('mobile-visible');
+        }
+        
+        // Utility functions
+        function formatNumber(num) {
+            if (!num) return '0';
+            if (num >= 1000000000) return (num / 1000000000).toFixed(2) + 'B';
+            if (num >= 1000000) return (num / 1000000).toFixed(2) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(2) + 'K';
+            return num.toString();
+        }
+        
+        function formatMarketCap(cap) {
+            if (!cap) return '0';
+            if (cap >= 1000000000000) return (cap / 1000000000000).toFixed(2) + 'T';
+            if (cap >= 1000000000) return (cap / 1000000000).toFixed(2) + 'B';
+            if (cap >= 1000000) return (cap / 1000000000).toFixed(2) + 'M';
+            return cap.toFixed(2);
+        }
+        
+        // Event listeners
+        document.getElementById('trade-quantity').addEventListener('input', calculateEstimatedTotal);
+        document.getElementById('order-type').addEventListener('change', updateExecuteButton);
+        
+        // Initialize Dashboard - Main entry point
+        async function initializeDashboard() {
+            try {
+                console.log('Initializing dashboard...');
+                
+                // Load market data
+                await loadMarketData();
+                
+                // If you have user authentication, load user data here
+                // For now, we'll use default values
+                currentUser = { id: 'demo-user', username: 'Demo User' };
+                
+                // Update balance display
+                await updateBalanceDisplay();
+                
+                console.log('Dashboard initialized successfully');
+            } catch (error) {
+                console.error('Dashboard initialization error:', error);
+                const tableBody = document.getElementById('stocks-table-body');
+                tableBody.innerHTML = `
+                    <tr><td colspan="7" style="text-align: center; padding: 40px; color: var(--red);">
+                        Error initializing dashboard: ${error.message}
+                    </td></tr>
+                `;
+            }
+        }
+        
+        // Load market data function
+        async function loadMarketData() {
+            try {
+                console.log('loadMarketData: Starting...');
+                
+                // Show loading state
+                const tableBody = document.getElementById('stocks-table-body');
+                tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px;"><div class="loading-spinner"></div> Loading market data...</td></tr>';
+                
+                console.log('loadMarketData: Supabase client ready');
+                
+                if (!supabase) {
+                    throw new Error('Supabase client not initialized');
+                }
+                
+                console.log('loadMarketData: Fetching stocks from Supabase...');
+                
+                let stocks = null;
+                let error = null;
+                
+                try {
+                    // Fetch stocks from Supabase
+                    const result = await supabase
+                        .from('stocks')
+                        .select('*')
+                        .order('symbol', { ascending: true });
+                    
+                    stocks = result.data;
+                    error = result.error;
+                } catch (fetchError) {
+                    // Check if it's a DataCloneError or iframe restriction
+                    if (fetchError.message && fetchError.message.includes('DataCloneError')) {
+                        console.warn('Browser context restriction detected. Loading demo data instead.');
+                        console.warn('To use real data, open this file directly in a browser tab (not in an iframe).');
+                        
+                        // Load demo data instead
+                        loadDemoStocks();
+                        return;
+                    }
+                    throw fetchError;
+                }
+                
+                // Log safely without Headers object
+                if (error) {
+                    console.error('Error loading stocks:', error.message || error);
+                } else {
+                    console.log('loadMarketData: Received', stocks ? stocks.length : 0, 'stocks');
+                }
+                
+                if (error) {
+                    console.error('Supabase error details:', error.message, error.details, error.hint);
+                    
+                    // If it's a connection error, offer demo mode
+                    tableBody.innerHTML = `
+                        <tr><td colspan="7" style="text-align: center; padding: 40px;">
+                            <div style="color: var(--red); margin-bottom: 15px;">
+                                <strong>Database Connection Error</strong>
+                            </div>
+                            <p style="color: var(--text-secondary); margin-bottom: 20px;">
+                                ${error.message || 'Unknown error'}<br>
+                                Please check your database connection and table setup.
+                            </p>
+                            <button onclick="loadDemoStocks()" style="padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer;">
+                                Load Demo Data Instead
+                            </button>
+                        </td></tr>
+                    `;
+                    return;
+                }
+                
+                if (!stocks || stocks.length === 0) {
+                    console.warn('No stocks found in database');
+                    tableBody.innerHTML = `
+                        <tr><td colspan="7" style="text-align: center; padding: 40px;">
+                            <div style="margin-bottom: 15px;">No stocks available in database.</div>
+                            <p style="color: var(--text-secondary); margin-bottom: 20px;">
+                                Please add stocks to your Supabase "stocks" table.
+                            </p>
+                            <button onclick="loadDemoStocks()" style="padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer;">
+                                Load Demo Data Instead
+                            </button>
+                        </td></tr>
+                    `;
+                    return;
+                }
+                
+                // Store the data
+                stocksData = stocks;
+                
+                console.log(`loadMarketData: Loaded ${stocks.length} stocks, displaying...`);
+                
+                // Display the stocks
+                displayStocks(stocks);
+                
+                console.log(`loadMarketData: Successfully loaded and displayed ${stocks.length} stocks`);
+                
+            } catch (error) {
+                console.error('Market data loading error:', error.message || error);
+                const tableBody = document.getElementById('stocks-table-body');
+                tableBody.innerHTML = `
+                    <tr><td colspan="7" style="text-align: center; padding: 40px;">
+                        <div style="color: var(--red); margin-bottom: 15px;">
+                            <strong>Error Loading Market Data</strong>
+                        </div>
+                        <p style="color: var(--text-secondary); margin-bottom: 20px;">
+                            ${error.message || 'Unknown error'}
+                        </p>
+                        <button onclick="loadDemoStocks()" style="padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer;">
+                            Load Demo Data Instead
+                        </button>
+                    </td></tr>
+                `;
+            }
+        }
+        
+        // Load demo stocks when Supabase is not available
+        function loadDemoStocks() {
+            console.log('Loading demo stock data...');
+            
+            stocksData = [
+                { symbol: 'AAPL', name: 'Apple Inc.', current_price: 175.25, change: 1.25, change_percent: 0.72, volume: 58392000, market_cap: 2750000000000 },
+                { symbol: 'GOOGL', name: 'Alphabet Inc.', current_price: 135.50, change: -0.75, change_percent: -0.55, volume: 28450000, market_cap: 1700000000000 },
+                { symbol: 'MSFT', name: 'Microsoft Corp.', current_price: 330.15, change: 2.15, change_percent: 0.66, volume: 25430000, market_cap: 2450000000000 },
+                { symbol: 'AMZN', name: 'Amazon.com Inc.', current_price: 145.80, change: -1.20, change_percent: -0.82, volume: 42350000, market_cap: 1500000000000 },
+                { symbol: 'TSLA', name: 'Tesla Inc.', current_price: 235.80, change: 5.20, change_percent: 2.26, volume: 102345000, market_cap: 750000000000 },
+                { symbol: 'NVDA', name: 'NVIDIA Corp.', current_price: 485.50, change: 8.75, change_percent: 1.84, volume: 45230000, market_cap: 1200000000000 },
+                { symbol: 'META', name: 'Meta Platforms Inc.', current_price: 312.40, change: -2.30, change_percent: -0.73, volume: 18450000, market_cap: 800000000000 },
+                { symbol: 'NFLX', name: 'Netflix Inc.', current_price: 485.20, change: 3.40, change_percent: 0.71, volume: 3245000, market_cap: 215000000000 },
+                { symbol: 'JPM', name: 'JPMorgan Chase & Co.', current_price: 145.30, change: -0.80, change_percent: -0.55, volume: 8540000, market_cap: 420000000000 },
+                { symbol: 'JNJ', name: 'Johnson & Johnson', current_price: 152.10, change: 0.45, change_percent: 0.30, volume: 4521000, market_cap: 390000000000 }
+            ];
+            
+            displayStocks(stocksData);
+            
+            // Show demo mode indicator
+            const tableContainer = document.querySelector('.stocks-table-container');
+            let demoNotice = document.getElementById('demo-notice');
+            
+            if (!demoNotice) {
+                demoNotice = document.createElement('div');
+                demoNotice.id = 'demo-notice';
+                demoNotice.style.cssText = 'padding: 12px; background: rgba(16, 185, 129, 0.1); border: 1px solid var(--primary); border-radius: 8px; margin-bottom: 15px; text-align: center; color: var(--primary);';
+                demoNotice.innerHTML = '<strong>📊 Demo Mode:</strong> Showing sample data. Configure Supabase to load real market data.';
+                tableContainer.parentNode.insertBefore(demoNotice, tableContainer);
+            }
+            
+            console.log(`Loaded ${stocksData.length} demo stocks successfully`);
+        }
+        
+        // Display stocks in the table
+        function displayStocks(stocks) {
+            const tableBody = document.getElementById('stocks-table-body');
+            
+            if (!stocks || stocks.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px;">No stocks match your search.</td></tr>';
+                return;
+            }
+            
+            tableBody.innerHTML = stocks.map(stock => `
+                <tr onclick="openTradingPanel(${JSON.stringify(stock).replace(/"/g, '&quot;')})">
+                    <td>
+                        <div class="stock-symbol">${stock.symbol}</div>
+                        <div class="stock-name">${stock.name}</div>
+                    </td>
+                    <td>$${stock.current_price.toFixed(2)}</td>
+                    <td class="${stock.change >= 0 ? 'positive' : 'negative'}">
+                        ${stock.change >= 0 ? '+' : ''}${stock.change.toFixed(2)}
+                    </td>
+                    <td class="${stock.change_percent >= 0 ? 'positive' : 'negative'}">
+                        ${stock.change_percent >= 0 ? '+' : ''}${stock.change_percent.toFixed(2)}%
+                    </td>
+                    <td>${formatNumber(stock.volume)}</td>
+                    <td>$${formatMarketCap(stock.market_cap)}</td>
+                    <td>
+                        <button class="quick-trade-btn" onclick="event.stopPropagation(); openTradingPanel(${JSON.stringify(stock).replace(/"/g, '&quot;')})">
+                            Trade
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+        
+        // Initial setup
+        window.onload = async function() {
+            // Test if we're in a browser environment
+            if (typeof window !== 'undefined') {
+                console.log('Dashboard loaded successfully');
+                
+                // Initialize Supabase first
+                if (!initSupabase()) {
+                    console.error('Failed to initialize Supabase');
+                    const tableBody = document.getElementById('stocks-table-body');
+                    tableBody.innerHTML = `
+                        <tr><td colspan="7" style="text-align: center; padding: 40px;">
+                            <div style="color: var(--red); margin-bottom: 15px;">
+                                <strong>⚠️ Error Loading Supabase</strong>
+                            </div>
+                            <p>The Supabase library failed to load. Please check your internet connection and refresh the page.</p>
+                        </td></tr>
+                    `;
+                    return;
+                }
+            
+                await initializeDashboard();
+            }
+        };
+    </script>
+</body>
+</html>
