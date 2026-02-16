@@ -471,7 +471,7 @@
             <!-- Market Header -->
             <div class="market-header">
                 <h1 style="margin: 0; color: var(--text-primary);">Browse Market</h1>
-                <input type="text" class="search-box" placeholder="Search stocks (AAPL, TSLA, etc.)" 
+                <input type="text" class="search-box" placeholder="Search ANY stock symbol (e.g., BOXX, AAPL, NVDA)..." 
                        onkeyup="searchStocks(this.value)">
                 <div>
                     <span id="balance-display" style="color: var(--text-primary);">Emeralds: $10,000.00</span>
@@ -483,7 +483,7 @@
             </div>
             
             <div id="api-info" class="info-message">
-                <strong>Note:</strong> Real-time stock data powered by Yahoo Finance. Data updates every refresh.
+                <strong>Note:</strong> Real-time stock data powered by Alpha Vantage API. Data updates every refresh.
             </div>
             
             <!-- Stocks Table -->
@@ -565,73 +565,10 @@
         const supabaseUrl = 'https://nlcdgfpnreyjoomctoht.supabase.co';
         const supabaseKey = 'sb_publishable_8OPX1CdBvxjjGkJbf5nRPA_oz0iSd_p';
         
-        // Comprehensive stock list - 100+ most popular stocks
+        // Most popular stocks to load by default (users can search for ANY stock!)
         const TRACKED_SYMBOLS = [
-            // MEGA CAP TECH
-            'AAPL', 'MSFT', 'GOOGL', 'GOOG', 'AMZN', 'NVDA', 'META', 'TSLA', 'AVGO', 'ORCL', 'ADBE', 'CRM', 'CSCO', 'INTC', 'AMD', 'QCOM', 'TXN', 'NFLX', 'IBM', 'UBER', 'LYFT', 'SHOP', 'SQ', 'PYPL', 'SNAP', 'TWLO', 'ZM', 'DOCU', 'DDOG', 'SNOW', 'PLTR', 'RBLX', 'U',
-            
-            // FINANCE & BANKING
-            'JPM', 'BAC', 'WFC', 'C', 'GS', 'MS', 'BLK', 'SCHW', 'AXP', 'USB', 'PNC', 'TFC', 'COF', 'BK', 'STT', 'V', 'MA', 'COIN',
-            
-            // HEALTHCARE & PHARMA
-            'UNH', 'JNJ', 'LLY', 'ABBV', 'MRK', 'TMO', 'ABT', 'PFE', 'DHR', 'BMY', 'AMGN', 'GILD', 'CVS', 'CI', 'HUM', 'ISRG', 'VRTX', 'REGN', 'ZTS', 'SYK', 'BSX', 'MDT', 'ELV',
-            
-            // CONSUMER DISCRETIONARY
-            'AMZN', 'TSLA', 'HD', 'MCD', 'NKE', 'SBUX', 'LOW', 'TJX', 'BKNG', 'CMG', 'MAR', 'ABNB', 'F', 'GM', 'HLT', 'YUM', 'ROST', 'DPZ', 'LULU', 'ETSY',
-            
-            // CONSUMER STAPLES
-            'WMT', 'PG', 'COST', 'KO', 'PEP', 'PM', 'MO', 'MDLZ', 'CL', 'KMB', 'GIS', 'K', 'HSY', 'TSN', 'EL', 'STZ', 'TAP',
-            
-            // ENERGY
-            'XOM', 'CVX', 'COP', 'EOG', 'SLB', 'MPC', 'PSX', 'VLO', 'OXY', 'HAL', 'KMI', 'WMB', 'HES', 'DVN', 'FANG',
-            
-            // INDUSTRIALS
-            'BA', 'CAT', 'GE', 'RTX', 'UPS', 'HON', 'UNP', 'LMT', 'DE', 'MMM', 'GD', 'NOC', 'FDX', 'CSX', 'NSC', 'WM', 'EMR', 'ITW', 'PH',
-            
-            // MATERIALS
-            'LIN', 'APD', 'SHW', 'FCX', 'NEM', 'ECL', 'DD', 'DOW', 'NUE', 'VMC', 'MLM',
-            
-            // REAL ESTATE & UTILITIES
-            'AMT', 'PLD', 'CCI', 'EQIX', 'PSA', 'DLR', 'O', 'WELL', 'SPG', 'NEE', 'DUK', 'SO', 'D', 'AEP', 'EXC', 'XEL',
-            
-            // TELECOMMUNICATIONS
-            'T', 'VZ', 'TMUS', 'CMCSA', 'CHTR', 'DIS',
-            
-            // ENTERTAINMENT & MEDIA
-            'DIS', 'NFLX', 'WBD', 'PARA', 'LYV', 'SPOT', 'EA', 'TTWO', 'ATVI', 'ROKU',
-            
-            // SEMICONDUCTORS
-            'NVDA', 'TSM', 'AVGO', 'QCOM', 'AMD', 'INTC', 'TXN', 'ADI', 'AMAT', 'LRCX', 'KLAC', 'MCHP', 'NXPI', 'MRVL', 'ON',
-            
-            // E-COMMERCE & RETAIL
-            'AMZN', 'WMT', 'HD', 'COST', 'TGT', 'LOW', 'BBY', 'DG', 'DLTR', 'RVLV', 'CHWY', 'W', 'FTCH',
-            
-            // AUTOMOTIVE
-            'TSLA', 'F', 'GM', 'TM', 'HMC', 'STLA', 'RIVN', 'LCID',
-            
-            // AEROSPACE & DEFENSE
-            'BA', 'LMT', 'RTX', 'NOC', 'GD', 'LHX', 'TDG', 'HWM',
-            
-            // BIOTECH
-            'GILD', 'AMGN', 'VRTX', 'REGN', 'BIIB', 'MRNA', 'BNTX', 'ALNY', 'SGEN', 'INCY',
-            
-            // INSURANCE
-            'BRK.B', 'PGR', 'TRV', 'ALL', 'AIG', 'MET', 'PRU', 'AFL', 'AJG', 'CB',
-            
-            // CLOUD & SOFTWARE
-            'CRM', 'ORCL', 'ADBE', 'NOW', 'INTU', 'WDAY', 'PANW', 'CRWD', 'ZS', 'FTNT', 'TEAM', 'VEEV', 'DDOG', 'NET', 'HUBS', 'OKTA',
-            
-            // CYBERSECURITY
-            'CRWD', 'PANW', 'ZS', 'FTNT', 'CHKP', 'OKTA', 'S', 'CYBR',
-            
-            // PAYMENTS & FINTECH
-            'V', 'MA', 'PYPL', 'SQ', 'COIN', 'AFRM', 'SOFI', 'NU', 'UPST',
-            
-            // STREAMING & SOCIAL
-            'NFLX', 'DIS', 'SPOT', 'ROKU', 'SNAP', 'PINS', 'MTCH', 'BMBL',
-            
-            // AI & DATA
-            'NVDA', 'AI', 'PLTR', 'SNOW', 'SPLK', 'DDOG', 'MDB', 'ESTC'
+            'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'TSLA', 'META', 'BRK.B',
+            'V', 'JPM', 'WMT', 'MA', 'UNH', 'JNJ', 'XOM', 'PG', 'HD', 'CVX', 'MRK', 'COST'
         ];
         
         // Initialize Supabase client - will be set when library loads
@@ -1040,18 +977,81 @@
         }
         
         // Fix 11: Search stocks
-        function searchStocks(query) {
+        // Dynamic search - fetches ANY stock symbol from Yahoo Finance
+        let searchTimeout = null;
+        async function searchStocks(query) {
+            // Clear previous timeout
+            if (searchTimeout) {
+                clearTimeout(searchTimeout);
+            }
+            
             if (!query.trim()) {
                 displayStocks(stocksData);
                 return;
             }
             
+            // First, filter existing loaded stocks
             const filtered = stocksData.filter(stock => 
                 stock.symbol.toLowerCase().includes(query.toLowerCase()) ||
                 stock.name.toLowerCase().includes(query.toLowerCase())
             );
             
-            displayStocks(filtered);
+            // If we found matches in loaded stocks, show them
+            if (filtered.length > 0) {
+                displayStocks(filtered);
+            } else {
+                // Show searching message
+                const tableBody = document.getElementById('stocks-table-body');
+                tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px; color: var(--text-secondary);">Searching for "' + query + '"...</td></tr>';
+            }
+            
+            // Wait 800ms after user stops typing to search Yahoo Finance
+            searchTimeout = setTimeout(async () => {
+                await searchYahooFinance(query.toUpperCase().trim());
+            }, 800);
+        }
+        
+        // Search Yahoo Finance for any stock symbol
+        async function searchYahooFinance(symbol) {
+            try {
+                console.log(`Searching Yahoo Finance for: ${symbol}`);
+                
+                // Try to fetch the stock data
+                const stock = await fetchYahooStockQuote(symbol);
+                
+                if (stock) {
+                    // Add to our stocksData if not already there
+                    const existingIndex = stocksData.findIndex(s => s.symbol === symbol);
+                    if (existingIndex >= 0) {
+                        stocksData[existingIndex] = stock;
+                    } else {
+                        stocksData.push(stock);
+                    }
+                    
+                    // Display the found stock
+                    displayStocks([stock]);
+                    
+                    console.log(`Found and loaded: ${symbol}`);
+                } else {
+                    // Stock not found
+                    const tableBody = document.getElementById('stocks-table-body');
+                    tableBody.innerHTML = `
+                        <tr><td colspan="7" style="text-align: center; padding: 40px;">
+                            <div style="color: var(--text-secondary); margin-bottom: 10px;">
+                                <i class="fas fa-search" style="font-size: 48px; opacity: 0.3;"></i>
+                            </div>
+                            <div style="font-size: 18px; margin-bottom: 10px;">Stock "${symbol}" not found</div>
+                            <div style="font-size: 14px; color: var(--text-secondary);">
+                                Try searching for common symbols like: AAPL, TSLA, NVDA, MSFT, GOOGL
+                            </div>
+                        </td></tr>
+                    `;
+                }
+            } catch (error) {
+                console.error('Search error:', error);
+                const tableBody = document.getElementById('stocks-table-body');
+                tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px; color: var(--red);">Error searching for stock. Please try again.</td></tr>';
+            }
         }
         
         // Fix 12: Show stock details modal
