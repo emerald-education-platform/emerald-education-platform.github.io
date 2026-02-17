@@ -846,6 +846,22 @@
         const body  = document.getElementById('holdings-body');
         const badge = document.getElementById('holdings-badge');
 
+        // Check if Supabase is connected
+        if (!supabase || !currentUser) {
+            body.innerHTML = `
+                <tr><td colspan="10">
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-triangle" style="color: var(--red);"></i>
+                        <p>Connection Error</p>
+                        <small>Unable to connect to database. Please check your Supabase credentials or <a href="index.html" style="color: var(--primary);">sign in again</a>.</small>
+                    </div>
+                </td></tr>`;
+            badge.textContent = '0 stocks';
+            document.getElementById('allocation-section').style.display = 'none';
+            updateSummaryCards(0, 0);
+            return;
+        }
+
         if (userPortfolio.length === 0) {
             body.innerHTML = `
                 <tr><td colspan="10">
@@ -1256,7 +1272,14 @@
         });
 
         await ready();
-        await loadUserDataFromSupabase();
+        
+        try {
+            await loadUserDataFromSupabase();
+        } catch (error) {
+            console.error('Error loading user data:', error);
+        }
+        
+        // Always call displayPortfolio, even if loading fails
         await displayPortfolio();
         lastUpdatedTime = Date.now();
         updateLastUpdatedText();
