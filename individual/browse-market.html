@@ -1092,13 +1092,13 @@
                     
                     if (cashError) throw cashError;
                     
-                    // Update portfolio
-                    const { data: existingHolding } = await supabase
+                    // Update portfolio - check if already owns this stock
+                    const { data: existingHolding, error: holdingError } = await supabase
                         .from('portfolio')
                         .select('*')
                         .eq('user_id', user.id)
                         .eq('stock_symbol', selectedStock.symbol)
-                        .single();
+                        .maybeSingle(); // Use maybeSingle() instead of single() to avoid 406 error
                     
                     if (existingHolding) {
                         // Update existing holding
@@ -1134,7 +1134,7 @@
                         .select('*')
                         .eq('user_id', user.id)
                         .eq('stock_symbol', selectedStock.symbol)
-                        .single();
+                        .maybeSingle(); // Use maybeSingle() to avoid 406 error when no holding exists
                     
                     if (!holding || holding.total_shares < quantity) {
                         showToast('Insufficient Shares', `You only have ${holding?.total_shares || 0} shares available to sell`, 'error');
@@ -1402,7 +1402,7 @@
                             </div>
                             <div style="font-size: 18px; margin-bottom: 10px;">Stock "${symbol}" not found</div>
                             <div style="font-size: 14px; color: var(--text-secondary);">
-                                Try searching for common symbols like: AAPL, TSLA, NVDA, MSFT, GOOGL
+                                Try searching for common symbols like: GOOGL, AAPL, TSLA, NVDA, MSFT
                             </div>
                         </td></tr>
                     `;
