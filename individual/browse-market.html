@@ -1308,6 +1308,18 @@
                         average_price: parseFloat(h.average_price)
                     }));
                     console.log('✅ Loaded portfolio from Supabase:', userPortfolio.length, 'positions');
+                    
+                    // CRITICAL: Fetch stock data for all holdings so we can calculate their value
+                    for (const holding of userPortfolio) {
+                        // Check if we already have this stock data
+                        if (!stocksData.find(s => s.symbol === holding.stock_symbol)) {
+                            console.log(`Fetching price data for portfolio holding: ${holding.stock_symbol}`);
+                            const stockData = await fetchYahooStockQuote(holding.stock_symbol);
+                            if (stockData) {
+                                stocksData.push(stockData);
+                            }
+                        }
+                    }
                 } else {
                     console.log('No holdings in portfolio');
                 }
