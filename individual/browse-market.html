@@ -1321,6 +1321,8 @@
                         }
                     }
                 } else {
+                    // CRITICAL: Clear portfolio if no holdings in database
+                    userPortfolio = [];
                     console.log('No holdings in portfolio');
                 }
                 
