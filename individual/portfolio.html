@@ -26,6 +26,8 @@
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
+        a { text-decoration: none; color: inherit; }
+
         body {
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
             background: var(--dark-bg);
@@ -518,6 +520,11 @@
             to   { opacity: 1; transform: translateX(0); }
         }
 
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to   { transform: rotate(360deg); }
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .sidebar { width: 100%; position: relative; min-height: auto; }
@@ -566,9 +573,12 @@
                 <h1><i class="fas fa-wallet" style="color: var(--primary); margin-right: 10px;"></i>My Portfolio</h1>
                 <div class="header-balance" id="header-balance" style="margin-top: 5px;">Loading...</div>
             </div>
-            <button class="btn-refresh" onclick="refreshPortfolio()">
-                <i class="fas fa-sync-alt"></i> Refresh
-            </button>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span id="last-updated" style="color: var(--text-secondary); font-size: 12px;">—</span>
+                <button class="btn-refresh" onclick="forceRefresh()" id="refresh-btn">
+                    <i class="fas fa-sync-alt" id="refresh-icon"></i> Refresh
+                </button>
+            </div>
         </div>
 
         <!-- Summary Cards -->
@@ -1153,13 +1163,52 @@
         }
     }
 
+    // ── Auto-Refresh ──
+    let autoRefreshInterval = null;
+    let lastUpdatedTime = null;
+
+    function updateLastUpdatedText() {
+        const el = document.getElementById('last-updated');
+        if (!el || !lastUpdatedTime) return;
+        const seconds = Math.floor((Date.now() - lastUpdatedTime) / 1000);
+        if (seconds < 5)       el.textContent = 'Updated just now';
+        else if (seconds < 60) el.textContent = `Updated ${seconds}s ago`;
+        else                   el.textContent = `Updated ${Math.floor(seconds / 60)}m ago`;
+    }
+
+    async function silentRefresh() {
+        try {
+            stocksData = [];
+            await loadUserDataFromSupabase();
+            await displayPortfolio();
+            lastUpdatedTime = Date.now();
+            updateLastUpdatedText();
+            console.log('🔄 Portfolio auto-refreshed silently');
+        } catch (e) {
+            console.warn('Auto-refresh failed:', e.message);
+        }
+    }
+
+    async function forceRefresh() {
+        const icon = document.getElementById('refresh-icon');
+        const btn  = document.getElementById('refresh-btn');
+        icon.style.animation = 'spin 0.8s linear infinite';
+        btn.disabled = true;
+        await silentRefresh();
+        icon.style.animation = '';
+        btn.disabled = false;
+    }
+
+    function startAutoRefresh() {
+        if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+        autoRefreshInterval = setInterval(silentRefresh, 60000);
+        setInterval(updateLastUpdatedText, 5000);
+        console.log('⏱️ Portfolio auto-refresh started (every 60s)');
+    }
+
     // ── Refresh ──
     async function refreshPortfolio() {
-        showToast('Refreshing', 'Updating portfolio data...', 'info', 2000);
-        stocksData = []; // Force re-fetch all prices
-        await loadUserDataFromSupabase();
-        await displayPortfolio();
-        showToast('Updated', 'Portfolio data refreshed!', 'success', 2000);
+        await forceRefresh();
     }
 
     // ── Logout ──
@@ -1185,6 +1234,9 @@
         await ready();
         await loadUserDataFromSupabase();
         await displayPortfolio();
+        lastUpdatedTime = Date.now();
+        updateLastUpdatedText();
+        startAutoRefresh();
     };
 
     document.getElementById('trade-quantity').addEventListener('input', calculateEstimatedTotal);
