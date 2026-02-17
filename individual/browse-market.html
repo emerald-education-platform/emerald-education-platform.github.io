@@ -1358,9 +1358,6 @@
                         stocksData.push(stock);
                     }
                     
-                    // Save to localStorage so searched stocks persist
-                    savePortfolioToLocalStorage();
-                    
                     // Display the found stock
                     displayStocks([stock]);
                     
@@ -1447,7 +1444,10 @@
                 localStorage.setItem('userPortfolio', JSON.stringify(userPortfolio));
                 localStorage.setItem('userTransactions', JSON.stringify(userTransactions));
                 localStorage.setItem('stocksData', JSON.stringify(stocksData));
-                console.log('Portfolio saved to localStorage');
+                console.log('✅ Portfolio saved to localStorage');
+                console.log('   Cash:', userCash);
+                console.log('   Holdings:', userPortfolio.length, 'positions');
+                console.log('   Stocks cached:', stocksData.length);
             } catch (error) {
                 console.error('Error saving portfolio:', error);
             }
@@ -1557,11 +1557,23 @@
                     return;
                 }
                 
-                // Store and display the data
-                stocksData = stocks;
-                displayStocks(stocks);
+                // Merge with existing stocksData instead of overwriting
+                // This preserves searched stocks from localStorage
+                stocks.forEach(newStock => {
+                    const existingIndex = stocksData.findIndex(s => s.symbol === newStock.symbol);
+                    if (existingIndex >= 0) {
+                        // Update existing stock with fresh data
+                        stocksData[existingIndex] = newStock;
+                    } else {
+                        // Add new stock
+                        stocksData.push(newStock);
+                    }
+                });
+                
+                displayStocks(stocksData);
                 
                 console.log('Market data loaded successfully from Yahoo Finance');
+                console.log(`Total stocks available: ${stocksData.length}`);
                 
             } catch (error) {
                 console.error('Error loading market data:', error);
