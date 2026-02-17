@@ -697,7 +697,7 @@
 <script>
     // ── Config ──
     const supabaseUrl = 'https://nlcdgfpnreyjoomctoht.supabase.co';
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5sY2RnZnBucmV5am9vbWN0b2h0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxMzg2MzgsImV4cCI6MjA4MzcxNDYzOH0.uVQlcHL56tqLPp9QiyTH2wStfdlRnI0XnINQ392JD2I';
+    const supabaseKey = 'sb_publishable_8OPX1CdBvxjjGkJbf5nRPA_oz0iSd_p';
     const STARTING_BALANCE = 10000.00;
     const ALLOCATION_COLORS = [
         '#10b981','#3b82f6','#f59e0b','#ef4444','#8b5cf6',
@@ -846,22 +846,6 @@
         const body  = document.getElementById('holdings-body');
         const badge = document.getElementById('holdings-badge');
 
-        // Check if Supabase is connected
-        if (!supabase || !currentUser) {
-            body.innerHTML = `
-                <tr><td colspan="10">
-                    <div class="empty-state">
-                        <i class="fas fa-exclamation-triangle" style="color: var(--red);"></i>
-                        <p>Connection Error</p>
-                        <small>Unable to connect to database. Please check your Supabase credentials or <a href="index.html" style="color: var(--primary);">sign in again</a>.</small>
-                    </div>
-                </td></tr>`;
-            badge.textContent = '0 stocks';
-            document.getElementById('allocation-section').style.display = 'none';
-            updateSummaryCards(0, 0);
-            return;
-        }
-
         if (userPortfolio.length === 0) {
             body.innerHTML = `
                 <tr><td colspan="10">
@@ -882,6 +866,11 @@
         const allocationData = [];
         const existingRows   = body.querySelectorAll('tr[data-symbol]');
         const isFirstLoad    = existingRows.length === 0;
+
+        // Clear loading message on first load
+        if (isFirstLoad) {
+            body.innerHTML = '';
+        }
 
         // Remove rows for stocks no longer in portfolio
         existingRows.forEach(row => {
@@ -1272,14 +1261,7 @@
         });
 
         await ready();
-        
-        try {
-            await loadUserDataFromSupabase();
-        } catch (error) {
-            console.error('Error loading user data:', error);
-        }
-        
-        // Always call displayPortfolio, even if loading fails
+        await loadUserDataFromSupabase();
         await displayPortfolio();
         lastUpdatedTime = Date.now();
         updateLastUpdatedText();
