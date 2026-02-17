@@ -471,7 +471,7 @@
             <!-- Market Header -->
             <div class="market-header">
                 <h1 style="margin: 0; color: var(--text-primary);">Browse Market</h1>
-                <input type="text" class="search-box" placeholder="Search ANY stock symbol (e.g., GOOGL, AAPL, NVDA)..." 
+                <input type="text" class="search-box" placeholder="Search ANY stock symbol (e.g., BOXX, AAPL, NVDA)..." 
                        onkeyup="searchStocks(this.value)">
                 <div>
                     <span id="balance-display" style="color: var(--text-primary);">Emeralds: $10,000.00</span>
@@ -850,9 +850,19 @@
         
         // Fix 9: Execute trade with Supabase integration
         async function executeTrade() {
-            if (!currentUser) {
-                alert('Please log in first');
-                window.location.href = '/individual/index.html';
+            // Check if user is authenticated
+            if (!supabase) {
+                alert('Database not initialized. Using demo mode.');
+                executeTradeDemo();
+                return;
+            }
+            
+            // Get current user from Supabase
+            const { data: { user }, error: authError } = await supabase.auth.getUser();
+            
+            if (authError || !user) {
+                console.log('No authenticated user, using demo mode');
+                executeTradeDemo();
                 return;
             }
             
@@ -877,47 +887,248 @@
             
             const totalCost = quantity * price;
             
-            // Check if user has enough cash for buy orders
+            try {
+                // Get user profile
+                const { data: profile, error: profileError } = await supabase
+                    .from('user_profiles')
+                    .select('cash_balance')
+                    .eq('id', user.id)
+                    .single();
+                
+                if (profileError) {
+                    console.error('Profile error:', profileError);
+                    alert('Error loading user profile. Using demo mode.');
+                    executeTradeDemo();
+                    return;
+                }
+                
+                const currentCash = profile.cash_balance;
+                
+                if (orderType === 'BUY') {
+                    // Check funds
+                    if (currentCash < totalCost) {
+                        alert(`Insufficient funds. You need $${totalCost.toFixed(2)} but only have $${currentCash.toFixed(2)}`);
+                        return;
+                    }
+                    
+                    // Record transaction
+                    const { error: transError } = await supabase
+                        .from('transactions')
+                        .insert({
+                            user_id: user.id,
+                            stock_symbol: selectedStock.symbol,
+                            transaction_type: 'BUY',
+                            quantity: quantity,
+                            price_per_share: price,
+                            total_amount: totalCost
+                        });
+                    
+                    if (transError) throw transError;
+                    
+                    // Update cash balance
+                    const { error: cashError } = await supabase
+                        .from('user_profiles')
+                        .update({ cash_balance: currentCash - totalCost })
+                        .eq('id', user.id);
+                    
+                    if (cashError) throw cashError;
+                    
+                    // Update portfolio
+                    const { data: existingHolding } = await supabase
+                        .from('portfolio')
+                        .select('*')
+                        .eq('user_id', user.id)
+                        .eq('stock_symbol', selectedStock.symbol)
+                        .single();
+                    
+                    if (existingHolding) {
+                        // Update existing holding
+                        const newShares = existingHolding.total_shares + quantity;
+                        const newAvgPrice = ((existingHolding.average_price * existingHolding.total_shares) + (price * quantity)) / newShares;
+                        
+                        await supabase
+                            .from('portfolio')
+                            .update({
+                                total_shares: newShares,
+                                average_price: newAvgPrice
+                            })
+                            .eq('user_id', user.id)
+                            .eq('stock_symbol', selectedStock.symbol);
+                    } else {
+                        // Create new holding
+                        await supabase
+                            .from('portfolio')
+                            .insert({
+                                user_id: user.id,
+                                stock_symbol: selectedStock.symbol,
+                                total_shares: quantity,
+                                average_price: price
+                            });
+                    }
+                    
+                    alert(`✅ Successfully bought ${quantity} shares of ${selectedStock.symbol} for $${totalCost.toFixed(2)}`);
+                    
+                } else {
+                    // SELL order
+                    const { data: holding } = await supabase
+                        .from('portfolio')
+                        .select('*')
+                        .eq('user_id', user.id)
+                        .eq('stock_symbol', selectedStock.symbol)
+                        .single();
+                    
+                    if (!holding || holding.total_shares < quantity) {
+                        alert(`You only have ${holding?.total_shares || 0} shares available to sell`);
+                        return;
+                    }
+                    
+                    // Record transaction
+                    const { error: transError } = await supabase
+                        .from('transactions')
+                        .insert({
+                            user_id: user.id,
+                            stock_symbol: selectedStock.symbol,
+                            transaction_type: 'SELL',
+                            quantity: quantity,
+                            price_per_share: price,
+                            total_amount: totalCost
+                        });
+                    
+                    if (transError) throw transError;
+                    
+                    // Update cash balance
+                    const { error: cashError } = await supabase
+                        .from('user_profiles')
+                        .update({ cash_balance: currentCash + totalCost })
+                        .eq('id', user.id);
+                    
+                    if (cashError) throw cashError;
+                    
+                    // Update portfolio
+                    const newShares = holding.total_shares - quantity;
+                    
+                    if (newShares === 0) {
+                        // Delete holding if all shares sold
+                        await supabase
+                            .from('portfolio')
+                            .delete()
+                            .eq('user_id', user.id)
+                            .eq('stock_symbol', selectedStock.symbol);
+                    } else {
+                        // Update holding
+                        await supabase
+                            .from('portfolio')
+                            .update({ total_shares: newShares })
+                            .eq('user_id', user.id)
+                            .eq('stock_symbol', selectedStock.symbol);
+                    }
+                    
+                    alert(`✅ Successfully sold ${quantity} shares of ${selectedStock.symbol} for $${totalCost.toFixed(2)}`);
+                }
+                
+                // Refresh display
+                closeTradingPanel();
+                await loadUserDataFromSupabase();
+                await updateBalanceDisplay();
+                
+                console.log('Trade executed successfully via Supabase');
+                
+            } catch (error) {
+                console.error('Trade execution error:', error);
+                alert('Error executing trade: ' + error.message);
+            }
+        }
+        
+        // Demo mode trading (no Supabase)
+        function executeTradeDemo() {
+            const orderType = document.getElementById('order-type').value;
+            const quantity = parseInt(document.getElementById('trade-quantity').value);
+            const price = parseFloat(document.getElementById('trade-price').value);
+            const totalCost = quantity * price;
+            
             if (orderType === 'BUY') {
                 if (userCash < totalCost) {
                     alert(`Insufficient funds. You need $${totalCost.toFixed(2)} but only have $${userCash.toFixed(2)}`);
                     return;
                 }
+                
+                userCash -= totalCost;
+                
+                const existingHolding = userPortfolio.find(p => p.stock_symbol === selectedStock.symbol);
+                if (existingHolding) {
+                    existingHolding.total_shares += quantity;
+                } else {
+                    userPortfolio.push({
+                        stock_symbol: selectedStock.symbol,
+                        total_shares: quantity,
+                        current_price: price
+                    });
+                }
+                
+                alert(`✅ Successfully bought ${quantity} shares of ${selectedStock.symbol} for $${totalCost.toFixed(2)}`);
+                
+            } else {
+                const holding = userPortfolio.find(p => p.stock_symbol === selectedStock.symbol);
+                
+                if (!holding || holding.total_shares < quantity) {
+                    alert(`You only have ${holding?.total_shares || 0} shares available to sell`);
+                    return;
+                }
+                
+                userCash += totalCost;
+                holding.total_shares -= quantity;
+                
+                if (holding.total_shares === 0) {
+                    userPortfolio = userPortfolio.filter(p => p.stock_symbol !== selectedStock.symbol);
+                }
+                
+                alert(`✅ Successfully sold ${quantity} shares of ${selectedStock.symbol} for $${totalCost.toFixed(2)}`);
             }
             
+            closeTradingPanel();
+            updateBalanceDisplay();
+            savePortfolioToLocalStorage();
+        }
+        
+        // Load user data from Supabase
+        async function loadUserDataFromSupabase() {
+            if (!supabase) return;
+            
             try {
-                // Insert transaction into Supabase
-                const { data, error } = await supabase
-                    .from('transactions')
-                    .insert({
-                        user_id: currentUser.id,
-                        stock_symbol: selectedStock.symbol,
-                        type: orderType,
-                        quantity: quantity,
-                        price: price,
-                        total_amount: totalCost
-                    });
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return;
                 
-                if (error) throw error;
+                // Load profile
+                const { data: profile } = await supabase
+                    .from('user_profiles')
+                    .select('*')
+                    .eq('id', user.id)
+                    .single();
                 
-                // Update local state
-                if (orderType === 'BUY') {
-                    userCash -= totalCost;
-                    
-                    const existingHolding = userPortfolio.find(p => p.stock_symbol === selectedStock.symbol);
-                    if (existingHolding) {
-                        existingHolding.total_shares += quantity;
-                    } else {
-                        userPortfolio.push({
-                            stock_symbol: selectedStock.symbol,
-                            total_shares: quantity,
-                            current_price: price
-                        });
-                    }
-                    
-                    userTransactions.push({
-                        stock_symbol: selectedStock.symbol,
-                        type: 'BUY',
+                if (profile) {
+                    userCash = profile.cash_balance;
+                }
+                
+                // Load portfolio
+                const { data: holdings } = await supabase
+                    .from('portfolio')
+                    .select('*')
+                    .eq('user_id', user.id);
+                
+                if (holdings) {
+                    userPortfolio = holdings.map(h => ({
+                        stock_symbol: h.stock_symbol,
+                        total_shares: h.total_shares,
+                        average_price: h.average_price
+                    }));
+                }
+                
+                console.log('Loaded user data from Supabase:', { cash: userCash, portfolio: userPortfolio });
+                
+            } catch (error) {
+                console.error('Error loading user data from Supabase:', error);
+            }
+        }
                         quantity: quantity,
                         price: price,
                         timestamp: new Date()
@@ -1107,6 +1318,43 @@
             return cap.toFixed(2);
         }
         
+        // LocalStorage functions for portfolio persistence
+        function savePortfolioToLocalStorage() {
+            try {
+                localStorage.setItem('userCash', userCash.toString());
+                localStorage.setItem('userPortfolio', JSON.stringify(userPortfolio));
+                localStorage.setItem('userTransactions', JSON.stringify(userTransactions));
+                console.log('Portfolio saved to localStorage');
+            } catch (error) {
+                console.error('Error saving portfolio:', error);
+            }
+        }
+        
+        function loadPortfolioFromLocalStorage() {
+            try {
+                const savedCash = localStorage.getItem('userCash');
+                const savedPortfolio = localStorage.getItem('userPortfolio');
+                const savedTransactions = localStorage.getItem('userTransactions');
+                
+                if (savedCash) {
+                    userCash = parseFloat(savedCash);
+                    console.log('Loaded cash from localStorage:', userCash);
+                }
+                
+                if (savedPortfolio) {
+                    userPortfolio = JSON.parse(savedPortfolio);
+                    console.log('Loaded portfolio from localStorage:', userPortfolio);
+                }
+                
+                if (savedTransactions) {
+                    userTransactions = JSON.parse(savedTransactions);
+                    console.log('Loaded transactions from localStorage:', userTransactions);
+                }
+            } catch (error) {
+                console.error('Error loading portfolio:', error);
+            }
+        }
+        
         // Event listeners
         document.getElementById('trade-quantity').addEventListener('input', calculateEstimatedTotal);
         document.getElementById('order-type').addEventListener('change', updateExecuteButton);
@@ -1116,17 +1364,27 @@
             try {
                 console.log('Initializing dashboard...');
                 
+                // Try to load from Supabase first
+                await loadUserDataFromSupabase();
+                
+                // If no Supabase data, load from localStorage
+                if (userCash === 10000 && userPortfolio.length === 0) {
+                    loadPortfolioFromLocalStorage();
+                }
+                
                 // Load market data
                 await loadMarketData();
                 
-                // If you have user authentication, load user data here
-                // For now, we'll use default values
-                currentUser = { id: 'demo-user', username: 'Demo User' };
+                // Set up user
+                const { data: { user } } = supabase ? await supabase.auth.getUser() : { data: { user: null } };
+                currentUser = user || { id: 'demo-user', username: 'Demo User' };
                 
                 // Update balance display
                 await updateBalanceDisplay();
                 
                 console.log('Dashboard initialized successfully');
+                console.log('Mode:', user ? 'Supabase (Professional)' : 'Demo (LocalStorage)');
+                
             } catch (error) {
                 console.error('Dashboard initialization error:', error);
                 const tableBody = document.getElementById('stocks-table-body');
