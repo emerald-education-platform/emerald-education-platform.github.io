@@ -1257,29 +1257,59 @@
                 const { data: { user } } = await supabase.auth.getUser();
                 if (!user) return;
                 
-                // Load profile
-                const { data: profile } = await supabase
+                // Load profile - use single() for one row
+                const { data: profile, error: profileError } = await supabase
                     .from('user_profiles')
                     .select('*')
                     .eq('id', user.id)
                     .single();
                 
-                if (profile) {
-                    userCash = profile.cash_balance;
+                if (profileError) {
+                    console.warn('Profile not found or error:', profileError.message);
+                    
+                    // Try to create profile if it doesn't exist
+                    if (profileError.code === 'PGRST116' || profileError.message.includes('does not exist')) {
+                        console.log('Creating user profile...');
+                        const { error: insertError } = await supabase
+                            .from('user_profiles')
+                            .insert({
+                                id: user.id,
+                                username: user.email.split('@')[0],
+                                email: user.email,
+                                cash_balance: 10000.00
+                            });
+                        
+                        if (insertError) {
+                            console.error('Could not create profile:', insertError);
+                            return;
+                        }
+                        
+                        // Set default cash
+                        userCash = 10000.00;
+                        console.log('✅ Profile created with $10,000 starting cash');
+                    }
+                } else if (profile) {
+                    userCash = parseFloat(profile.cash_balance) || 10000.00;
+                    console.log('✅ Loaded cash from Supabase:', userCash);
                 }
                 
                 // Load portfolio
-                const { data: holdings } = await supabase
+                const { data: holdings, error: holdingsError } = await supabase
                     .from('portfolio')
                     .select('*')
                     .eq('user_id', user.id);
                 
-                if (holdings) {
+                if (holdingsError) {
+                    console.warn('Could not load portfolio:', holdingsError.message);
+                } else if (holdings && holdings.length > 0) {
                     userPortfolio = holdings.map(h => ({
                         stock_symbol: h.stock_symbol,
                         total_shares: h.total_shares,
-                        average_price: h.average_price
+                        average_price: parseFloat(h.average_price)
                     }));
+                    console.log('✅ Loaded portfolio from Supabase:', userPortfolio.length, 'positions');
+                } else {
+                    console.log('No holdings in portfolio');
                 }
                 
                 console.log('Loaded user data from Supabase:', { cash: userCash, portfolio: userPortfolio });
