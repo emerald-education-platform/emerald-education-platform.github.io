@@ -1358,6 +1358,9 @@
                         stocksData.push(stock);
                     }
                     
+                    // Save to localStorage so searched stocks persist
+                    savePortfolioToLocalStorage();
+                    
                     // Display the found stock
                     displayStocks([stock]);
                     
@@ -1443,6 +1446,7 @@
                 localStorage.setItem('userCash', userCash.toString());
                 localStorage.setItem('userPortfolio', JSON.stringify(userPortfolio));
                 localStorage.setItem('userTransactions', JSON.stringify(userTransactions));
+                localStorage.setItem('stocksData', JSON.stringify(stocksData));
                 console.log('Portfolio saved to localStorage');
             } catch (error) {
                 console.error('Error saving portfolio:', error);
@@ -1454,6 +1458,7 @@
                 const savedCash = localStorage.getItem('userCash');
                 const savedPortfolio = localStorage.getItem('userPortfolio');
                 const savedTransactions = localStorage.getItem('userTransactions');
+                const savedStocksData = localStorage.getItem('stocksData');
                 
                 if (savedCash) {
                     userCash = parseFloat(savedCash);
@@ -1469,6 +1474,17 @@
                     userTransactions = JSON.parse(savedTransactions);
                     console.log('Loaded transactions from localStorage:', userTransactions);
                 }
+                
+                if (savedStocksData) {
+                    const loadedStocks = JSON.parse(savedStocksData);
+                    // Merge with existing stocksData, keeping searched stocks
+                    loadedStocks.forEach(savedStock => {
+                        if (!stocksData.find(s => s.symbol === savedStock.symbol)) {
+                            stocksData.push(savedStock);
+                        }
+                    });
+                    console.log('Loaded stocks from localStorage:', stocksData.length, 'total stocks');
+                }
             } catch (error) {
                 console.error('Error loading portfolio:', error);
             }
@@ -1483,15 +1499,13 @@
             try {
                 console.log('Initializing dashboard...');
                 
-                // Try to load from Supabase first
+                // Load portfolio from localStorage first (includes saved stocks)
+                loadPortfolioFromLocalStorage();
+                
+                // Try to load from Supabase
                 await loadUserDataFromSupabase();
                 
-                // If no Supabase data, load from localStorage
-                if (userCash === 10000 && userPortfolio.length === 0) {
-                    loadPortfolioFromLocalStorage();
-                }
-                
-                // Load market data
+                // Load market data (this will add to existing stocks from localStorage)
                 await loadMarketData();
                 
                 // Set up user
