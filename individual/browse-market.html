@@ -1129,46 +1129,6 @@
                 console.error('Error loading user data from Supabase:', error);
             }
         }
-                        quantity: quantity,
-                        price: price,
-                        timestamp: new Date()
-                    });
-                    
-                    alert(`Successfully bought ${quantity} shares of ${selectedStock.symbol} for $${totalCost.toFixed(2)}`);
-                } else {
-                    const holding = userPortfolio.find(p => p.stock_symbol === selectedStock.symbol);
-                    
-                    if (!holding || holding.total_shares < quantity) {
-                        alert(`You only have ${holding?.total_shares || 0} shares available to sell`);
-                        return;
-                    }
-                    
-                    userCash += totalCost;
-                    holding.total_shares -= quantity;
-                    
-                    if (holding.total_shares === 0) {
-                        userPortfolio = userPortfolio.filter(p => p.stock_symbol !== selectedStock.symbol);
-                    }
-                    
-                    userTransactions.push({
-                        stock_symbol: selectedStock.symbol,
-                        type: 'SELL',
-                        quantity: quantity,
-                        price: price,
-                        timestamp: new Date()
-                    });
-                    
-                    alert(`Successfully sold ${quantity} shares of ${selectedStock.symbol} for $${totalCost.toFixed(2)}`);
-                }
-                
-                closeTradingPanel();
-                await updateBalanceDisplay();
-                
-            } catch (error) {
-                console.error('Trade execution error:', error);
-                alert('Error executing trade: ' + error.message);
-            }
-        }
         
         // Fix 10: Update balance display
         async function updateBalanceDisplay() {
