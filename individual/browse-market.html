@@ -471,7 +471,7 @@
             <!-- Market Header -->
             <div class="market-header">
                 <h1 style="margin: 0; color: var(--text-primary);">Browse Market</h1>
-                <input type="text" class="search-box" placeholder="Search ANY stock symbol (e.g., BOXX, AAPL, NVDA)..." 
+                <input type="text" class="search-box" placeholder="Search ANY stock symbol (e.g. GOOGL, AAPL, NVDA)..." 
                        onkeyup="searchStocks(this.value)">
                 <div>
                     <span id="balance-display" style="color: var(--text-primary);">Emeralds: $10,000.00</span>
@@ -787,22 +787,40 @@
         }
         
         // Fix 5: Open trading panel
-        function openTradingPanel(symbol, price) {
-            selectedStock = stocksData.find(s => s.symbol === symbol);
+        function openTradingPanel(symbolOrStock, price) {
+            // Handle both calling patterns: openTradingPanel('AAPL', 150) or openTradingPanel(stockObject)
+            let stock, symbol, stockPrice;
+            
+            if (typeof symbolOrStock === 'object') {
+                // Called with stock object
+                stock = symbolOrStock;
+                symbol = stock.symbol;
+                stockPrice = stock.current_price;
+                selectedStock = stock;
+            } else {
+                // Called with symbol and price
+                symbol = symbolOrStock;
+                stockPrice = price;
+                stock = stocksData.find(s => s.symbol === symbol);
+                selectedStock = stock;
+            }
             
             if (!selectedStock) {
-                alert('Stock not found');
+                console.error('Stock not found:', symbolOrStock);
+                alert('Unable to load stock data. Please try again.');
                 return;
             }
             
+            // Update trading panel
             document.getElementById('trade-symbol').textContent = `Trade ${symbol}`;
-            document.getElementById('current-price').textContent = price.toFixed(2);
-            document.getElementById('trade-price').value = price.toFixed(2);
+            document.getElementById('current-price').textContent = stockPrice.toFixed(2);
+            document.getElementById('trade-price').value = stockPrice.toFixed(2);
             document.getElementById('available-cash').textContent = userCash.toFixed(2);
             
             updateExecuteButton();
             calculateEstimatedTotal();
             
+            // Show panel
             document.getElementById('tradingPanel').classList.add('active');
             
             loadAvailableShares(symbol);
