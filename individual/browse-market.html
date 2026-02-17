@@ -567,7 +567,7 @@
         
         // Most popular stocks to load by default (users can search for ANY stock!)
         const TRACKED_SYMBOLS = [
-            'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'TSLA', 'META', 'BRK.B',
+            'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'TSLA', 'META', 'BRK-B',
             'V', 'JPM', 'WMT', 'MA', 'UNH', 'JNJ', 'XOM', 'PG', 'HD', 'CVX', 'MRK', 'COST'
         ];
         
@@ -1182,10 +1182,13 @@
         // Fetch individual stock quote from Yahoo Finance
         async function fetchYahooStockQuote(symbol) {
             try {
-                console.log(`Fetching quote for: ${symbol}`);
+                // Convert symbol format for Yahoo Finance (BRK.B -> BRK-B)
+                const yahooSymbol = symbol.replace('.', '-');
+                
+                console.log(`Fetching quote for: ${symbol} (Yahoo format: ${yahooSymbol})`);
                 
                 // Using CORS proxy to access Yahoo Finance
-                const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1d`;
+                const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=1d`;
                 const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`;
                 
                 const response = await fetch(proxyUrl);
@@ -1223,6 +1226,7 @@
                 const volumes = indicators.volume?.filter(v => v != null) || [];
                 const volume = volumes.length > 0 ? volumes[volumes.length - 1] : 0;
                 
+                // Return with original symbol format (user's input)
                 return {
                     symbol: symbol,
                     name: getCompanyName(symbol),
@@ -1275,7 +1279,7 @@
                 // Auto
                 'F': 'Ford Motor Co.', 'GM': 'General Motors', 'RIVN': 'Rivian Automotive', 'LCID': 'Lucid Motors',
                 // Other Popular
-                'BRK.B': 'Berkshire Hathaway', 'TSM': 'Taiwan Semi', 'SPOT': 'Spotify Tech', 'ROKU': 'Roku Inc.'
+                'BRK.B': 'Berkshire Hathaway', 'BRK-B': 'Berkshire Hathaway', 'TSM': 'Taiwan Semi', 'SPOT': 'Spotify Tech', 'ROKU': 'Roku Inc.'
             };
             // Return company name if found, otherwise use symbol as company name
             return names[symbol] || `${symbol} Inc.`;
