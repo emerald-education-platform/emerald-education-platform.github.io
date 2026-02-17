@@ -307,6 +307,113 @@
             box-shadow: 0 2px 6px rgba(16, 185, 129, 0.2);
         }
         
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10000;
+            pointer-events: none;
+        }
+        
+        .toast {
+            background: var(--card-bg);
+            border-left: 4px solid var(--primary);
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin-bottom: 12px;
+            min-width: 300px;
+            max-width: 400px;
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            pointer-events: all;
+            animation: slideIn 0.3s ease-out;
+            transition: opacity 0.3s, transform 0.3s;
+        }
+        
+        .toast.success {
+            border-left-color: var(--green);
+        }
+        
+        .toast.error {
+            border-left-color: var(--red);
+        }
+        
+        .toast.warning {
+            border-left-color: #fbbf24;
+        }
+        
+        .toast.info {
+            border-left-color: #3b82f6;
+        }
+        
+        .toast-icon {
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+        
+        .toast.success .toast-icon {
+            color: var(--green);
+        }
+        
+        .toast.error .toast-icon {
+            color: var(--red);
+        }
+        
+        .toast.warning .toast-icon {
+            color: #fbbf24;
+        }
+        
+        .toast.info .toast-icon {
+            color: #3b82f6;
+        }
+        
+        .toast-content {
+            flex: 1;
+        }
+        
+        .toast-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+        
+        .toast-message {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+        
+        .toast-close {
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-size: 20px;
+            padding: 0 4px;
+            transition: color 0.2s;
+        }
+        
+        .toast-close:hover {
+            color: var(--text-primary);
+        }
+        
+        .toast.hiding {
+            opacity: 0;
+            transform: translateX(400px);
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(400px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
         #stock-info-panel {
             background: var(--hover-bg);
             padding: 15px;
@@ -471,7 +578,7 @@
             <!-- Market Header -->
             <div class="market-header">
                 <h1 style="margin: 0; color: var(--text-primary);">Browse Market</h1>
-                <input type="text" class="search-box" placeholder="Search ANY stock symbol (e.g. GOOGL, AAPL, NVDA)..." 
+                <input type="text" class="search-box" placeholder="Search ANY stock symbol (e.g., BOXX, AAPL, NVDA)..." 
                        onkeyup="searchStocks(this.value)">
                 <div>
                     <span id="balance-display" style="color: var(--text-primary);">Emeralds: $10,000.00</span>
@@ -558,6 +665,9 @@
         </div>
     </div>
     
+    <!-- Toast Notification Container -->
+    <div class="toast-container" id="toast-container"></div>
+    
     <script>
         // ===========================================
         // API CONFIGURATION
@@ -596,6 +706,37 @@
         let userTransactions = [];
         let userCash = 10000.00;
         let selectedStock = null;
+        
+        // Toast Notification System
+        function showToast(title, message, type = 'info', duration = 4000) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            
+            const icons = {
+                success: '✓',
+                error: '✕',
+                warning: '⚠',
+                info: 'ℹ'
+            };
+            
+            toast.innerHTML = `
+                <div class="toast-icon">${icons[type]}</div>
+                <div class="toast-content">
+                    <div class="toast-title">${title}</div>
+                    <div class="toast-message">${message}</div>
+                </div>
+                <div class="toast-close" onclick="this.parentElement.remove()">×</div>
+            `;
+            
+            container.appendChild(toast);
+            
+            // Auto remove after duration
+            setTimeout(() => {
+                toast.classList.add('hiding');
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
+        }
         
         // Removed auth check - using demo mode
         // Dashboard initializes via window.onload at the bottom of the script
@@ -807,7 +948,7 @@
             
             if (!selectedStock) {
                 console.error('Stock not found:', symbolOrStock);
-                alert('Unable to load stock data. Please try again.');
+                showToast('Error', 'Unable to load stock data. Please try again.', 'error');
                 return;
             }
             
@@ -870,7 +1011,7 @@
         async function executeTrade() {
             // Check if user is authenticated
             if (!supabase) {
-                alert('Database not initialized. Using demo mode.');
+                console.log('Database not initialized. Using demo mode.');
                 executeTradeDemo();
                 return;
             }
@@ -885,7 +1026,7 @@
             }
             
             if (!selectedStock) {
-                alert('Please select a stock first');
+                showToast('No Stock Selected', 'Please select a stock first', 'warning');
                 return;
             }
             
@@ -894,12 +1035,12 @@
             const price = parseFloat(document.getElementById('trade-price').value);
             
             if (!quantity || quantity < 1) {
-                alert('Please enter a valid quantity');
+                showToast('Invalid Quantity', 'Please enter a valid quantity', 'error');
                 return;
             }
             
             if (!price || price <= 0) {
-                alert('Please enter a valid price');
+                showToast('Invalid Price', 'Please enter a valid price', 'error');
                 return;
             }
             
@@ -915,7 +1056,7 @@
                 
                 if (profileError) {
                     console.error('Profile error:', profileError);
-                    alert('Error loading user profile. Using demo mode.');
+                    console.log('Using demo mode');
                     executeTradeDemo();
                     return;
                 }
@@ -925,7 +1066,7 @@
                 if (orderType === 'BUY') {
                     // Check funds
                     if (currentCash < totalCost) {
-                        alert(`Insufficient funds. You need $${totalCost.toFixed(2)} but only have $${currentCash.toFixed(2)}`);
+                        showToast('Insufficient Funds', `You need $${totalCost.toFixed(2)} but only have $${currentCash.toFixed(2)}`, 'error');
                         return;
                     }
                     
@@ -984,7 +1125,7 @@
                             });
                     }
                     
-                    alert(`✅ Successfully bought ${quantity} shares of ${selectedStock.symbol} for $${totalCost.toFixed(2)}`);
+                    showToast('Trade Successful', `Bought ${quantity} shares of ${selectedStock.symbol} for $${totalCost.toFixed(2)}`, 'success');
                     
                 } else {
                     // SELL order
@@ -996,7 +1137,7 @@
                         .single();
                     
                     if (!holding || holding.total_shares < quantity) {
-                        alert(`You only have ${holding?.total_shares || 0} shares available to sell`);
+                        showToast('Insufficient Shares', `You only have ${holding?.total_shares || 0} shares available to sell`, 'error');
                         return;
                     }
                     
@@ -1041,7 +1182,7 @@
                             .eq('stock_symbol', selectedStock.symbol);
                     }
                     
-                    alert(`✅ Successfully sold ${quantity} shares of ${selectedStock.symbol} for $${totalCost.toFixed(2)}`);
+                    showToast('Trade Successful', `Sold ${quantity} shares of ${selectedStock.symbol} for $${totalCost.toFixed(2)}`, 'success');
                 }
                 
                 // Refresh display
@@ -1053,7 +1194,7 @@
                 
             } catch (error) {
                 console.error('Trade execution error:', error);
-                alert('Error executing trade: ' + error.message);
+                showToast('Trade Error', error.message, 'error');
             }
         }
         
@@ -1083,13 +1224,13 @@
                     });
                 }
                 
-                alert(`✅ Successfully bought ${quantity} shares of ${selectedStock.symbol} for $${totalCost.toFixed(2)}`);
+                showToast('Trade Successful', `Bought ${quantity} shares of ${selectedStock.symbol} for $${totalCost.toFixed(2)}`, 'success');
                 
             } else {
                 const holding = userPortfolio.find(p => p.stock_symbol === selectedStock.symbol);
                 
                 if (!holding || holding.total_shares < quantity) {
-                    alert(`You only have ${holding?.total_shares || 0} shares available to sell`);
+                    showToast('Insufficient Shares', `You only have ${holding?.total_shares || 0} shares available to sell`, 'error');
                     return;
                 }
                 
@@ -1100,7 +1241,7 @@
                     userPortfolio = userPortfolio.filter(p => p.stock_symbol !== selectedStock.symbol);
                 }
                 
-                alert(`✅ Successfully sold ${quantity} shares of ${selectedStock.symbol} for $${totalCost.toFixed(2)}`);
+                showToast('Trade Successful', `Sold ${quantity} shares of ${selectedStock.symbol} for $${totalCost.toFixed(2)}`, 'success');
             }
             
             closeTradingPanel();
