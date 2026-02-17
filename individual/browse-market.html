@@ -578,7 +578,7 @@
             <!-- Market Header -->
             <div class="market-header">
                 <h1 style="margin: 0; color: var(--text-primary);">Browse Market</h1>
-                <input type="text" class="search-box" placeholder="Search ANY stock symbol (e.g., BOXX, AAPL, NVDA)..." 
+                <input type="text" class="search-box" placeholder="Search ANY stock symbol (e.g., GOOGL, AAPL, NVDA)..." 
                        onkeyup="searchStocks(this.value)">
                 <div>
                     <span id="balance-display" style="color: var(--text-primary);">Emeralds: $10,000.00</span>
@@ -590,7 +590,7 @@
             </div>
             
             <div id="api-info" class="info-message">
-                <strong>Note:</strong> Real-time stock data powered by Alpha Vantage API. Data updates every refresh.
+                <strong>Note:</strong> Real-time stock data powered by Yahoo Finance. Data updates every refresh.
             </div>
             
             <!-- Stocks Table -->
@@ -1499,24 +1499,42 @@
             try {
                 console.log('Initializing dashboard...');
                 
-                // Load portfolio from localStorage first (includes saved stocks)
-                loadPortfolioFromLocalStorage();
+                // Check if Supabase is available and configured
+                if (!supabase || supabaseUrl.includes('YOUR_SUPABASE_URL')) {
+                    console.log('Supabase not configured, using localStorage mode');
+                    loadPortfolioFromLocalStorage();
+                    await loadMarketData();
+                    currentUser = { id: 'demo-user', username: 'Demo User' };
+                    await updateBalanceDisplay();
+                    console.log('Dashboard initialized in localStorage mode');
+                    return;
+                }
                 
-                // Try to load from Supabase
-                await loadUserDataFromSupabase();
+                // Try to get or create a demo user in Supabase
+                let user = await getOrCreateDemoUser();
                 
-                // Load market data (this will add to existing stocks from localStorage)
-                await loadMarketData();
-                
-                // Set up user
-                const { data: { user } } = supabase ? await supabase.auth.getUser() : { data: { user: null } };
-                currentUser = user || { id: 'demo-user', username: 'Demo User' };
-                
-                // Update balance display
-                await updateBalanceDisplay();
-                
-                console.log('Dashboard initialized successfully');
-                console.log('Mode:', user ? 'Supabase (Professional)' : 'Demo (LocalStorage)');
+                if (user) {
+                    currentUser = user;
+                    console.log('✅ Using Supabase mode with user:', user.email);
+                    
+                    // Load user data from Supabase
+                    await loadUserDataFromSupabase();
+                    
+                    // Load market data
+                    await loadMarketData();
+                    
+                    // Update balance display
+                    await updateBalanceDisplay();
+                    
+                    console.log('Dashboard initialized successfully in Supabase mode');
+                } else {
+                    // Fallback to localStorage if Supabase fails
+                    console.log('⚠️ Supabase unavailable, falling back to localStorage');
+                    loadPortfolioFromLocalStorage();
+                    await loadMarketData();
+                    currentUser = { id: 'demo-user', username: 'Demo User' };
+                    await updateBalanceDisplay();
+                }
                 
             } catch (error) {
                 console.error('Dashboard initialization error:', error);
@@ -1526,6 +1544,66 @@
                         Error initializing dashboard: ${error.message}
                     </td></tr>
                 `;
+            }
+        }
+        
+        // Get or create a demo user for Supabase
+        async function getOrCreateDemoUser() {
+            try {
+                // Try to sign in with demo credentials
+                const demoEmail = 'demo@emeraldexchange.com';
+                const demoPassword = 'demo123456';
+                
+                // Check if already signed in
+                const { data: { user: existingUser } } = await supabase.auth.getUser();
+                if (existingUser) {
+                    console.log('Already signed in:', existingUser.email);
+                    return existingUser;
+                }
+                
+                // Try to sign in
+                let { data, error } = await supabase.auth.signInWithPassword({
+                    email: demoEmail,
+                    password: demoPassword
+                });
+                
+                if (error && error.message.includes('Invalid login credentials')) {
+                    // Demo user doesn't exist, create it
+                    console.log('Creating demo user...');
+                    const signUpResult = await supabase.auth.signUp({
+                        email: demoEmail,
+                        password: demoPassword,
+                        options: {
+                            data: {
+                                username: 'Demo User'
+                            }
+                        }
+                    });
+                    
+                    if (signUpResult.error) {
+                        console.error('Error creating demo user:', signUpResult.error);
+                        return null;
+                    }
+                    
+                    data = signUpResult.data;
+                    
+                    // Create user profile
+                    if (data.user) {
+                        await supabase.from('user_profiles').insert({
+                            id: data.user.id,
+                            username: 'Demo User',
+                            email: demoEmail,
+                            cash_balance: 10000.00
+                        });
+                        console.log('✅ Demo user created successfully');
+                    }
+                }
+                
+                return data?.user || null;
+                
+            } catch (error) {
+                console.error('Error with demo user:', error);
+                return null;
             }
         }
         
