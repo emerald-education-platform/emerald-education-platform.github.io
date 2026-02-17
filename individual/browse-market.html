@@ -1004,37 +1004,69 @@
                 tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px;">No stocks found</td></tr>';
                 return;
             }
-            
-            tbody.innerHTML = '';
-            
-            stocks.forEach(stock => {
-                const changeClass = stock.change >= 0 ? 'positive' : 'negative';
-                const changeSign = stock.change >= 0 ? '+' : '';
-                
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>
-                        <div class="stock-symbol">${stock.symbol}</div>
-                    </td>
-                    <td>
-                        <div class="stock-name">${stock.name}</div>
-                    </td>
-                    <td>$${stock.current_price.toFixed(2)}</td>
-                    <td class="${changeClass}">${changeSign}${stock.change.toFixed(2)}</td>
-                    <td class="${changeClass}">${changeSign}${stock.change_percent.toFixed(2)}%</td>
-                    <td>${formatNumber(stock.volume)}</td>
-                    <td>${stock.market_cap > 0 ? '$' + formatMarketCap(stock.market_cap) : 'N/A'}</td>
-                    <td>
-                        <button onclick="event.stopPropagation(); openTradingPanel('${stock.symbol}', ${stock.current_price})" 
-                                style="padding: 8px 15px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer;">
-                            Trade
-                        </button>
-                    </td>
-                `;
-                
-                row.onclick = () => showStockDetails(stock);
-                tbody.appendChild(row);
-            });
+
+            // Check if rows already exist (silent refresh) vs first load
+            const existingRows = tbody.querySelectorAll('tr[data-symbol]');
+            const isFirstLoad  = existingRows.length === 0;
+
+            if (isFirstLoad) {
+                // Build full table on first load only
+                tbody.innerHTML = '';
+                stocks.forEach(stock => {
+                    const row = buildStockRow(stock);
+                    tbody.appendChild(row);
+                });
+            } else {
+                // Silent refresh: update only the changing cells, no DOM rebuild
+                stocks.forEach(stock => {
+                    const row = tbody.querySelector(`tr[data-symbol="${stock.symbol}"]`);
+                    if (row) {
+                        // Update only the cells that change (price, change, volume)
+                        const changeClass = stock.change >= 0 ? 'positive' : 'negative';
+                        const changeSign  = stock.change >= 0 ? '+' : '';
+
+                        row.querySelector('.cell-price').textContent     = `$${stock.current_price.toFixed(2)}`;
+                        const changeCell    = row.querySelector('.cell-change');
+                        changeCell.textContent  = `${changeSign}${stock.change.toFixed(2)}`;
+                        changeCell.className    = `cell-change ${changeClass}`;
+                        const changePctCell = row.querySelector('.cell-change-pct');
+                        changePctCell.textContent = `${changeSign}${stock.change_percent.toFixed(2)}%`;
+                        changePctCell.className   = `cell-change-pct ${changeClass}`;
+                        row.querySelector('.cell-volume').textContent    = formatNumber(stock.volume);
+                        // Update trade button price
+                        const btn = row.querySelector('button');
+                        if (btn) btn.setAttribute('onclick',
+                            `event.stopPropagation(); openTradingPanel('${stock.symbol}', ${stock.current_price})`);
+                    } else {
+                        // New stock added (e.g. from search) - just append
+                        tbody.appendChild(buildStockRow(stock));
+                    }
+                });
+            }
+        }
+
+        function buildStockRow(stock) {
+            const changeClass = stock.change >= 0 ? 'positive' : 'negative';
+            const changeSign  = stock.change >= 0 ? '+' : '';
+            const row = document.createElement('tr');
+            row.setAttribute('data-symbol', stock.symbol);
+            row.innerHTML = `
+                <td><div class="stock-symbol">${stock.symbol}</div></td>
+                <td><div class="stock-name">${stock.name}</div></td>
+                <td class="cell-price">$${stock.current_price.toFixed(2)}</td>
+                <td class="cell-change ${changeClass}">${changeSign}${stock.change.toFixed(2)}</td>
+                <td class="cell-change-pct ${changeClass}">${changeSign}${stock.change_percent.toFixed(2)}%</td>
+                <td class="cell-volume">${formatNumber(stock.volume)}</td>
+                <td>${stock.market_cap > 0 ? '$' + formatMarketCap(stock.market_cap) : 'N/A'}</td>
+                <td>
+                    <button onclick="event.stopPropagation(); openTradingPanel('${stock.symbol}', ${stock.current_price})"
+                            style="padding: 8px 15px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer;">
+                        Trade
+                    </button>
+                </td>
+            `;
+            row.onclick = () => showStockDetails(stock);
+            return row;
         }
         
         // Fix 5: Open trading panel
