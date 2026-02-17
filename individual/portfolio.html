@@ -843,7 +843,7 @@
 
     // ── Display Portfolio ──
     async function displayPortfolio() {
-        const body = document.getElementById('holdings-body');
+        const body  = document.getElementById('holdings-body');
         const badge = document.getElementById('holdings-badge');
 
         if (userPortfolio.length === 0) {
@@ -861,10 +861,17 @@
             return;
         }
 
-        let totalCost = 0;
+        let totalCost  = 0;
         let totalValue = 0;
-        let rows = '';
         const allocationData = [];
+        const existingRows   = body.querySelectorAll('tr[data-symbol]');
+        const isFirstLoad    = existingRows.length === 0;
+
+        // Remove rows for stocks no longer in portfolio
+        existingRows.forEach(row => {
+            const sym = row.getAttribute('data-symbol');
+            if (!userPortfolio.find(h => h.stock_symbol === sym)) row.remove();
+        });
 
         for (const holding of userPortfolio) {
             let stock = stocksData.find(s => s.symbol === holding.stock_symbol);
@@ -874,67 +881,85 @@
             }
             if (!stock) continue;
 
-            const shares    = holding.total_shares;
-            const avgPrice  = holding.average_price || 0;
-            const curPrice  = stock.current_price;
-            const cost      = shares * avgPrice;
-            const value     = shares * curPrice;
-            const gainLoss  = value - cost;
-            const gainPct   = cost > 0 ? (gainLoss / cost) * 100 : 0;
+            const shares   = holding.total_shares;
+            const avgPrice = holding.average_price || 0;
+            const curPrice = stock.current_price;
+            const cost     = shares * avgPrice;
+            const value    = shares * curPrice;
+            const gainLoss = value - cost;
+            const gainPct  = cost > 0 ? (gainLoss / cost) * 100 : 0;
 
             totalCost  += cost;
             totalValue += value;
-
             allocationData.push({ symbol: holding.stock_symbol, value });
 
-            const glClass = gainLoss >= 0 ? 'positive' : 'negative';
-            const glSign  = gainLoss >= 0 ? '+' : '';
-            const changeIcon = gainLoss >= 0
+            const glClass  = gainLoss >= 0 ? 'positive' : 'negative';
+            const glSign   = gainLoss >= 0 ? '+' : '';
+            const arrow    = gainLoss >= 0
                 ? '<i class="fas fa-arrow-up" style="font-size:11px;"></i>'
                 : '<i class="fas fa-arrow-down" style="font-size:11px;"></i>';
+            const dayColor = stock.change >= 0 ? 'var(--green)' : 'var(--red)';
+            const daySign  = stock.change >= 0 ? '+' : '';
 
-            rows += `
-                <tr>
+            const existingRow = body.querySelector(`tr[data-symbol="${holding.stock_symbol}"]`);
+
+            if (existingRow && !isFirstLoad) {
+                // Update only changing cells — no layout shift!
+                existingRow.querySelector('.cell-cur-price').innerHTML =
+                    `$${curPrice.toFixed(2)}<div style="font-size:12px;color:${dayColor};">${daySign}${stock.change.toFixed(2)} (${stock.change_percent.toFixed(2)}%)</div>`;
+                existingRow.querySelector('.cell-value').textContent   = `$${value.toFixed(2)}`;
+                const glCell = existingRow.querySelector('.cell-gl');
+                glCell.innerHTML   = `${arrow} ${glSign}$${Math.abs(gainLoss).toFixed(2)}`;
+                glCell.className   = `cell-gl ${glClass}`;
+                const pctCell = existingRow.querySelector('.cell-pct');
+                pctCell.textContent = `${glSign}${gainPct.toFixed(2)}%`;
+                pctCell.className   = `cell-pct ${glClass}`;
+                const btn = existingRow.querySelector('button');
+                if (btn) btn.setAttribute('onclick', `openTradingPanel('${holding.stock_symbol}', ${curPrice})`);
+            } else {
+                // Build new row
+                const row = document.createElement('tr');
+                row.setAttribute('data-symbol', holding.stock_symbol);
+                row.innerHTML = `
                     <td>
                         <div class="symbol-cell">${holding.stock_symbol}</div>
                         <div class="name-cell">${stock.name}</div>
                     </td>
                     <td>${shares.toLocaleString()}</td>
                     <td>$${avgPrice.toFixed(2)}</td>
-                    <td>
-                        $${curPrice.toFixed(2)}
-                        <div style="font-size:12px; color: ${stock.change >= 0 ? 'var(--green)' : 'var(--red)'};">
-                            ${stock.change >= 0 ? '+' : ''}${stock.change.toFixed(2)} (${stock.change_percent.toFixed(2)}%)
-                        </div>
+                    <td class="cell-cur-price">$${curPrice.toFixed(2)}
+                        <div style="font-size:12px;color:${dayColor};">${daySign}${stock.change.toFixed(2)} (${stock.change_percent.toFixed(2)}%)</div>
                     </td>
                     <td>$${cost.toFixed(2)}</td>
-                    <td style="font-weight: 600;">$${value.toFixed(2)}</td>
-                    <td class="${glClass}">${changeIcon} ${glSign}$${Math.abs(gainLoss).toFixed(2)}</td>
-                    <td class="${glClass}">${glSign}${gainPct.toFixed(2)}%</td>
+                    <td class="cell-value" style="font-weight:600;">$${value.toFixed(2)}</td>
+                    <td class="cell-gl ${glClass}">${arrow} ${glSign}$${Math.abs(gainLoss).toFixed(2)}</td>
+                    <td class="cell-pct ${glClass}">${glSign}${gainPct.toFixed(2)}%</td>
                     <td>
-                        <div style="font-size:12px; color: var(--text-secondary); margin-bottom:4px;" id="alloc-${holding.stock_symbol}">—</div>
-                        <div class="allocation-bar"><div class="allocation-fill" id="alloc-bar-${holding.stock_symbol}" style="width:0%"></div></div>
+                        <div class="cell-alloc-text" style="font-size:12px;color:var(--text-secondary);margin-bottom:4px;">—</div>
+                        <div class="allocation-bar"><div class="allocation-fill cell-alloc-bar" style="width:0%"></div></div>
                     </td>
                     <td>
                         <button class="trade-btn" onclick="openTradingPanel('${holding.stock_symbol}', ${curPrice})">
                             <i class="fas fa-exchange-alt"></i> Trade
                         </button>
                     </td>
-                </tr>
-            `;
+                `;
+                body.appendChild(row);
+            }
         }
 
-        body.innerHTML = rows || `<tr><td colspan="10"><div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Could not load prices</p><small>Check your connection and refresh</small></div></td></tr>`;
         badge.textContent = `${userPortfolio.length} stock${userPortfolio.length !== 1 ? 's' : ''}`;
 
-        // Set allocation percentages
+        // Update allocation bars in-place
         if (totalValue > 0) {
             allocationData.forEach(item => {
                 const pct = (item.value / totalValue * 100).toFixed(1);
-                const el = document.getElementById(`alloc-${item.symbol}`);
-                const bar = document.getElementById(`alloc-bar-${item.symbol}`);
-                if (el)  el.textContent  = `${pct}%`;
-                if (bar) bar.style.width = `${pct}%`;
+                const row = body.querySelector(`tr[data-symbol="${item.symbol}"]`);
+                if (!row) return;
+                const text = row.querySelector('.cell-alloc-text');
+                const bar  = row.querySelector('.cell-alloc-bar');
+                if (text) text.textContent  = `${pct}%`;
+                if (bar)  bar.style.width   = `${pct}%`;
             });
         }
 
@@ -1178,7 +1203,6 @@
 
     async function silentRefresh() {
         try {
-            stocksData = [];
             await loadUserDataFromSupabase();
             await displayPortfolio();
             lastUpdatedTime = Date.now();
