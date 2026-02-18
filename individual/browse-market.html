@@ -48,14 +48,27 @@
             padding: 20px;
             width: 250px;
             min-height: 100vh;
-            position: relative;
+            position: fixed;
+            top: 0; left: 0;
+            display: flex;
+            flex-direction: column;
         }
         
         .logo { 
-            font-size: 1.5rem; 
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.3rem; 
             font-weight: bold; 
             color: var(--primary); 
-            margin-bottom: 30px; 
+            margin-bottom: 30px;
+            padding: 5px 0;
+        }
+        
+        .logo img {
+            width: 36px;
+            height: 36px;
+            object-fit: contain;
         }
         
         .nav-item { 
@@ -63,8 +76,18 @@
             margin: 5px 0; 
             border-radius: 8px; 
             cursor: pointer;
-            transition: background 0.2s;
+            transition: background 0.2s, color 0.2s;
             color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        
+        .nav-item i {
+            width: 18px;
+            text-align: center;
         }
         
         .nav-item.active { 
@@ -79,16 +102,16 @@
         }
         
         .sidebar-footer {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            right: 20px;
+            margin-top: auto;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-dark);
         }
         
         /* Main Content */
         .main-content { 
+            margin-left: 250px;
             flex: 1;
-            padding: 20px;
+            padding: 30px;
             max-width: 100%;
             overflow-x: auto;
         }
@@ -566,23 +589,29 @@
     <div class="dashboard-container">
         <!-- Sidebar -->
         <div class="sidebar" id="sidebar">
-            <div class="logo">Emerald Exchange</div>
-            <div class="nav-item active" id="nav-market">
-                <i class="fas fa-chart-line"></i> Browse Market
+            <div class="logo">
+                <a href="https://emerald-education-platform.github.io" class="logo" style="text-decoration: none; cursor: pointer;"></a>
+                <img src="ESElogoIcon.png" alt="ESE">
+                Emerald Exchange
             </div>
-            <a href="portfolio.html" class="nav-item" style="text-decoration: none;">
+
+            <a href="browse-market.html" class="nav-item active">
+                <i class="fas fa-chart-line"></i> Browse Market
+            </a>
+            <a href="portfolio.html" class="nav-item">
                 <i class="fas fa-wallet"></i> My Portfolio
             </a>
-            <div class="nav-item" id="nav-watchlist">
-                <i class="fas fa-star"></i> Watchlist
-            </div>
-            <div class="nav-item" id="nav-transactions">
+            <a href="transactions.html" class="nav-item">
                 <i class="fas fa-history"></i> Transactions
-            </div>
+            </a>
+            <a href="#" class="nav-item" style="opacity: 0.4; cursor: default;">
+                <i class="fas fa-star"></i> Watchlist <span style="font-size:11px; margin-left:auto;">Soon</span>
+            </a>
+
             <div class="sidebar-footer">
-                <div class="nav-item" onclick="logout()">
+                <a href="#" class="nav-item" onclick="logout()">
                     <i class="fas fa-sign-out-alt"></i> Logout
-                </div>
+                </a>
             </div>
         </div>
         
@@ -908,7 +937,7 @@
             const tbody = document.getElementById('stocks-table-body');
             
             if (!stocks || stocks.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px;">No stocks found</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px;">No stocks found</td></tr>';
                 return;
             }
 
@@ -923,6 +952,17 @@
                     const row = buildStockRow(stock);
                     tbody.appendChild(row);
                 });
+                
+                // Draw sparklines after rows are added to DOM
+                setTimeout(() => {
+                    stocks.forEach(stock => {
+                        const sparklineData = stock.history && stock.history.length > 0 
+                            ? stock.history 
+                            : generateSparklineData(stock.current_price, stock.change_percent);
+                        
+                        drawSparkline(`sparkline-${stock.symbol}`, sparklineData, stock.change >= 0);
+                    });
+                }, 10);
             } else {
                 // Silent refresh: update only the changing cells, no DOM rebuild
                 stocks.forEach(stock => {
@@ -940,6 +980,14 @@
                         changePctCell.textContent = `${changeSign}${stock.change_percent.toFixed(2)}%`;
                         changePctCell.className   = `cell-change-pct ${changeClass}`;
                         row.querySelector('.cell-volume').textContent    = formatNumber(stock.volume);
+                        
+                        // Update sparkline with new historical data
+                        const sparklineData = stock.history && stock.history.length > 0 
+                            ? stock.history 
+                            : generateSparklineData(stock.current_price, stock.change_percent);
+                        
+                        drawSparkline(`sparkline-${stock.symbol}`, sparklineData, stock.change >= 0);
+                        
                         // Update trade button price
                         const btn = row.querySelector('button');
                         if (btn) btn.setAttribute('onclick',
@@ -960,9 +1008,12 @@
             row.innerHTML = `
                 <td><div class="stock-symbol">${stock.symbol}</div></td>
                 <td><div class="stock-name">${stock.name}</div></td>
-                <td class="cell-price">$${stock.current_price.toFixed(2)}</td>
+                <td class="cell-price" style="font-weight: 600;">$${stock.current_price.toFixed(2)}</td>
                 <td class="cell-change ${changeClass}">${changeSign}${stock.change.toFixed(2)}</td>
                 <td class="cell-change-pct ${changeClass}">${changeSign}${stock.change_percent.toFixed(2)}%</td>
+                <td class="cell-trend">
+                    <canvas id="sparkline-${stock.symbol}" class="sparkline-canvas" width="100" height="40"></canvas>
+                </td>
                 <td class="cell-volume">${formatNumber(stock.volume)}</td>
                 <td>${stock.market_cap > 0 ? '$' + formatMarketCap(stock.market_cap) : 'N/A'}</td>
                 <td>
@@ -1974,17 +2025,34 @@
         function loadDemoStocks() {
             console.log('Loading demo stock data...');
             
+            // Helper to generate realistic-looking historical data
+            function generateDemoHistory(currentPrice, changePercent) {
+                const points = 20;
+                const data = [];
+                const startPrice = currentPrice / (1 + changePercent / 100);
+                
+                let price = startPrice;
+                for (let i = 0; i < points; i++) {
+                    const randomChange = (Math.random() - 0.5) * (currentPrice * 0.015);
+                    const trendFactor = i / (points - 1);
+                    price = startPrice + (currentPrice - startPrice) * trendFactor + randomChange;
+                    data.push(Math.max(price, 0));
+                }
+                data[data.length - 1] = currentPrice;
+                return data;
+            }
+            
             stocksData = [
-                { symbol: 'AAPL', name: 'Apple Inc.', current_price: 175.25, change: 1.25, change_percent: 0.72, volume: 58392000, market_cap: 2750000000000 },
-                { symbol: 'GOOGL', name: 'Alphabet Inc.', current_price: 135.50, change: -0.75, change_percent: -0.55, volume: 28450000, market_cap: 1700000000000 },
-                { symbol: 'MSFT', name: 'Microsoft Corp.', current_price: 330.15, change: 2.15, change_percent: 0.66, volume: 25430000, market_cap: 2450000000000 },
-                { symbol: 'AMZN', name: 'Amazon.com Inc.', current_price: 145.80, change: -1.20, change_percent: -0.82, volume: 42350000, market_cap: 1500000000000 },
-                { symbol: 'TSLA', name: 'Tesla Inc.', current_price: 235.80, change: 5.20, change_percent: 2.26, volume: 102345000, market_cap: 750000000000 },
-                { symbol: 'NVDA', name: 'NVIDIA Corp.', current_price: 485.50, change: 8.75, change_percent: 1.84, volume: 45230000, market_cap: 1200000000000 },
-                { symbol: 'META', name: 'Meta Platforms Inc.', current_price: 312.40, change: -2.30, change_percent: -0.73, volume: 18450000, market_cap: 800000000000 },
-                { symbol: 'NFLX', name: 'Netflix Inc.', current_price: 485.20, change: 3.40, change_percent: 0.71, volume: 3245000, market_cap: 215000000000 },
-                { symbol: 'JPM', name: 'JPMorgan Chase & Co.', current_price: 145.30, change: -0.80, change_percent: -0.55, volume: 8540000, market_cap: 420000000000 },
-                { symbol: 'JNJ', name: 'Johnson & Johnson', current_price: 152.10, change: 0.45, change_percent: 0.30, volume: 4521000, market_cap: 390000000000 }
+                { symbol: 'AAPL', name: 'Apple Inc.', current_price: 175.25, change: 1.25, change_percent: 0.72, volume: 58392000, market_cap: 2750000000000, history: generateDemoHistory(175.25, 0.72) },
+                { symbol: 'GOOGL', name: 'Alphabet Inc.', current_price: 135.50, change: -0.75, change_percent: -0.55, volume: 28450000, market_cap: 1700000000000, history: generateDemoHistory(135.50, -0.55) },
+                { symbol: 'MSFT', name: 'Microsoft Corp.', current_price: 330.15, change: 2.15, change_percent: 0.66, volume: 25430000, market_cap: 2450000000000, history: generateDemoHistory(330.15, 0.66) },
+                { symbol: 'AMZN', name: 'Amazon.com Inc.', current_price: 145.80, change: -1.20, change_percent: -0.82, volume: 42350000, market_cap: 1500000000000, history: generateDemoHistory(145.80, -0.82) },
+                { symbol: 'TSLA', name: 'Tesla Inc.', current_price: 235.80, change: 5.20, change_percent: 2.26, volume: 102345000, market_cap: 750000000000, history: generateDemoHistory(235.80, 2.26) },
+                { symbol: 'NVDA', name: 'NVIDIA Corp.', current_price: 485.50, change: 8.75, change_percent: 1.84, volume: 45230000, market_cap: 1200000000000, history: generateDemoHistory(485.50, 1.84) },
+                { symbol: 'META', name: 'Meta Platforms Inc.', current_price: 312.40, change: -2.30, change_percent: -0.73, volume: 18450000, market_cap: 800000000000, history: generateDemoHistory(312.40, -0.73) },
+                { symbol: 'NFLX', name: 'Netflix Inc.', current_price: 485.20, change: 3.40, change_percent: 0.71, volume: 3245000, market_cap: 215000000000, history: generateDemoHistory(485.20, 0.71) },
+                { symbol: 'JPM', name: 'JPMorgan Chase & Co.', current_price: 145.30, change: -0.80, change_percent: -0.55, volume: 8540000, market_cap: 420000000000, history: generateDemoHistory(145.30, -0.55) },
+                { symbol: 'JNJ', name: 'Johnson & Johnson', current_price: 152.10, change: 0.45, change_percent: 0.30, volume: 4521000, market_cap: 390000000000, history: generateDemoHistory(152.10, 0.30) }
             ];
             
             displayStocks(stocksData);
@@ -2095,7 +2163,7 @@
                 return;
             }
             
-            tableBody.innerHTML = stocks.map((stock, index) => `
+            tableBody.innerHTML = stocks.map(stock => `
                 <tr onclick="openTradingPanel(${JSON.stringify(stock).replace(/"/g, '&quot;')})">
                     <td>${stock.symbol}</td>
                     <td>${stock.name}</td>
@@ -2107,7 +2175,7 @@
                         ${stock.change_percent >= 0 ? '+' : ''}${stock.change_percent.toFixed(2)}%
                     </td>
                     <td>
-                        <canvas id="sparkline-${index}" class="sparkline-canvas"></canvas>
+                        <canvas id="sparkline-${stock.symbol}" class="sparkline-canvas" width="100" height="40"></canvas>
                     </td>
                     <td>${formatNumber(stock.volume)}</td>
                     <td>$${formatMarketCap(stock.market_cap)}</td>
@@ -2119,33 +2187,18 @@
                 </tr>
             `).join('');
             
-            // Fetch historical data and draw sparklines
-            setTimeout(async () => {
-                for (let i = 0; i < stocks.length; i++) {
-                    const stock = stocks[i];
-                    let historicalData = stock.history;
-                    
-                    // Fetch historical data if not already present
-                    if (!historicalData) {
-                        historicalData = await fetchStockHistory(stock.symbol);
-                    }
-                    
-                    // Use real data if available, otherwise generate fallback
-                    const sparklineData = historicalData && historicalData.length > 0
-                        ? historicalData
+            // Draw sparklines after DOM is updated
+            setTimeout(() => {
+                stocks.forEach(stock => {
+                    // Use real historical data if available, otherwise generate simulated data
+                    const sparklineData = stock.history && stock.history.length > 0 
+                        ? stock.history 
                         : generateSparklineData(stock.current_price, stock.change_percent);
                     
-                    drawSparkline(`sparkline-${i}`, sparklineData, stock.change >= 0);
-                    
-                    // Store historical data on the stock object for future use
-                    if (historicalData) {
-                        stock.history = historicalData;
-                    }
-                }
+                    drawSparkline(`sparkline-${stock.symbol}`, sparklineData, stock.change >= 0);
+                });
             }, 10);
         }
-        
-        // Initial setup
         window.onload = async function() {
             // Test if we're in a browser environment
             if (typeof window !== 'undefined') {
