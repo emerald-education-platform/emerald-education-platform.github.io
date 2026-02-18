@@ -2630,51 +2630,6 @@
             ctx.fill();
         }
         
-        // Display stocks in the table
-        function displayStocks(stocks) {
-            const tableBody = document.getElementById('stocks-table-body');
-            
-            if (!stocks || stocks.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px;">No stocks match your search.</td></tr>';
-                return;
-            }
-            
-            tableBody.innerHTML = stocks.map(stock => `
-                <tr onclick="openTradingPanel(${JSON.stringify(stock).replace(/"/g, '&quot;')})">
-                    <td>${stock.symbol}</td>
-                    <td>${stock.name}</td>
-                    <td style="font-weight: 600;">$${stock.current_price.toFixed(2)}</td>
-                    <td class="${stock.change >= 0 ? 'positive' : 'negative'}">
-                        ${stock.change >= 0 ? '+' : ''}${stock.change.toFixed(2)}
-                    </td>
-                    <td class="${stock.change_percent >= 0 ? 'positive' : 'negative'}">
-                        ${stock.change_percent >= 0 ? '+' : ''}${stock.change_percent.toFixed(2)}%
-                    </td>
-                    <td>
-                        <canvas id="sparkline-${stock.symbol}" class="sparkline-canvas" width="100" height="40"></canvas>
-                    </td>
-                    <td>${formatNumber(stock.volume)}</td>
-                    <td>$${formatMarketCap(stock.market_cap)}</td>
-                    <td>
-                        <button class="quick-trade-btn" onclick="event.stopPropagation(); openTradingPanel(${JSON.stringify(stock).replace(/"/g, '&quot;')})">
-                            Trade
-                        </button>
-                    </td>
-                </tr>
-            `).join('');
-            
-            // Draw sparklines after DOM is updated
-            setTimeout(() => {
-                stocks.forEach(stock => {
-                    // Use real historical data if available, otherwise generate simulated data
-                    const sparklineData = stock.history && stock.history.length > 0 
-                        ? stock.history 
-                        : generateSparklineData(stock.current_price, stock.change_percent);
-                    
-                    drawSparkline(`sparkline-${stock.symbol}`, sparklineData, stock.change >= 0);
-                });
-            }, 10);
-        }
         window.onload = async function() {
             // Test if we're in a browser environment
             if (typeof window !== 'undefined') {
