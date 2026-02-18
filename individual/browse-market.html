@@ -847,6 +847,8 @@
                         <button onclick="loadChartData('3M')" id="tab-3M">3M</button>
                         <button onclick="loadChartData('6M')" id="tab-6M">6M</button>
                         <button onclick="loadChartData('1Y')" id="tab-1Y">1Y</button>
+                        <button onclick="loadChartData('5Y')" id="tab-5Y">5Y</button>
+                        <button onclick="loadChartData('MAX')" id="tab-MAX">MAX</button>
                     </div>
 
                     <!-- Chart -->
@@ -1679,48 +1681,53 @@
                 return;
             }
             
-            // First, filter existing loaded stocks
+            const searchTerm = query.toLowerCase();
+            
+            // First, filter existing loaded stocks to show immediate results
             const filtered = stocksData.filter(stock => 
-                stock.symbol.toLowerCase().includes(query.toLowerCase()) ||
-                stock.name.toLowerCase().includes(query.toLowerCase())
+                stock.symbol.toLowerCase().includes(searchTerm) ||
+                stock.name.toLowerCase().includes(searchTerm)
             );
             
-            // If we found matches in loaded stocks, show them
+            // If we found matches in loaded stocks, show them immediately
             if (filtered.length > 0) {
                 displayStocks(filtered);
+                console.log(`Found ${filtered.length} match(es) in loaded stocks for: ${query}`);
             } else {
-                // Show searching message
+                // Show searching message only if no local matches
                 const tableBody = document.getElementById('stocks-table-body');
                 tableBody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px; color: var(--text-secondary);">Searching for "' + query + '"...</td></tr>';
             }
             
-            // Wait 800ms after user stops typing to search Yahoo Finance
+            // Always search Yahoo Finance after 800ms to get fresh data or find new stocks
             searchTimeout = setTimeout(async () => {
-                await searchYahooFinance(query.toUpperCase().trim());
+                const symbol = query.toUpperCase().trim();
+                await searchYahooFinance(symbol);
             }, 800);
         }
         
         // Search Yahoo Finance for any stock symbol
         async function searchYahooFinance(symbol) {
             try {
-                console.log(`Searching Yahoo Finance for: ${symbol}`);
+                console.log(`Fetching fresh data from Yahoo Finance for: ${symbol}`);
                 
                 // Try to fetch the stock data
                 const stock = await fetchYahooStockQuote(symbol);
                 
                 if (stock) {
-                    // Add to our stocksData if not already there
+                    // Add or update in our stocksData
                     const existingIndex = stocksData.findIndex(s => s.symbol === symbol);
                     if (existingIndex >= 0) {
+                        console.log(`Updating existing stock: ${symbol}`);
                         stocksData[existingIndex] = stock;
                     } else {
+                        console.log(`Adding new stock: ${symbol}`);
                         stocksData.push(stock);
                     }
                     
-                    // Display the found stock
+                    // Always display the result (fresh data from Yahoo)
                     displayStocks([stock]);
                     
-                    console.log(`Found and loaded: ${symbol}`);
                 } else {
                     // Stock not found
                     const tableBody = document.getElementById('stocks-table-body');
@@ -1851,7 +1858,9 @@
                 '1M': { range: '1mo', interval: '1h' },
                 '3M': { range: '3mo', interval: '1d' },
                 '6M': { range: '6mo', interval: '1d' },
-                '1Y': { range: '1y', interval: '1d' }
+                '1Y': { range: '1y', interval: '1d' },
+                '5Y': { range: '5y', interval: '1wk' },
+                'MAX': { range: 'max', interval: '1mo' }
             };
 
             const { range, interval } = periodMap[period];
@@ -1943,8 +1952,13 @@
                     return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
                 } else if (period === '5D') {
                     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-                } else {
+                } else if (period === '1M' || period === '3M') {
                     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                } else if (period === '6M' || period === '1Y') {
+                    return date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+                } else {
+                    // 5Y and MAX - show year only
+                    return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
                 }
             };
 
@@ -2045,11 +2059,33 @@
         // Silent background refresh - no spinners, no disruption
         async function silentRefresh() {
             try {
-                await loadMarketData();
+                // Get all symbols currently loaded (including searched ones)
+                const allSymbols = stocksData.map(s => s.symbol);
+                
+                console.log(`🔄 Auto-refreshing ${allSymbols.length} stocks...`);
+                
+                // Fetch fresh data for all loaded stocks in parallel
+                const stockPromises = allSymbols.map(symbol => fetchYahooStockQuote(symbol));
+                const results = await Promise.allSettled(stockPromises);
+                
+                // Update stocksData with fresh data
+                results.forEach((result, index) => {
+                    if (result.status === 'fulfilled' && result.value !== null) {
+                        const symbol = allSymbols[index];
+                        const existingIndex = stocksData.findIndex(s => s.symbol === symbol);
+                        if (existingIndex >= 0) {
+                            stocksData[existingIndex] = result.value;
+                        }
+                    }
+                });
+                
+                // Re-display with updated data (in-place update, no flicker)
+                displayStocks(stocksData);
+                
                 await updateBalanceDisplay();
                 lastUpdatedTime = Date.now();
                 updateLastUpdatedText();
-                console.log('🔄 Auto-refreshed prices silently');
+                console.log('✅ Auto-refresh complete');
             } catch (e) {
                 console.warn('Auto-refresh failed silently:', e.message);
             }
@@ -2066,10 +2102,13 @@
             btn.disabled = false;
         }
         
-        // Start auto-refresh every 60 seconds
+        // Start auto-refresh
+        // Yahoo Finance (via corsproxy.io) has no strict public rate limit
+        // Safe refresh intervals: 15-30s during market hours, 60s after hours
+        // Current setting: 60 seconds (very conservative, can safely reduce to 30s or even 15s)
         function startAutoRefresh() {
             if (autoRefreshInterval) clearInterval(autoRefreshInterval);
-            autoRefreshInterval = setInterval(silentRefresh, 60000);
+            autoRefreshInterval = setInterval(silentRefresh, 60000); // 60 seconds
             // Update the "X seconds ago" text every 5 seconds
             setInterval(updateLastUpdatedText, 5000);
             console.log('⏱️ Auto-refresh started (every 60s)');
