@@ -1749,6 +1749,7 @@
         let currentChartPeriod = '1D';
 
         function showStockDetails(stock) {
+            console.log('Opening stock details for:', stock.symbol);
             currentModalStock = stock;
             
             // Update header
@@ -1772,6 +1773,8 @@
             // Show modal
             document.getElementById('stock-detail-modal').classList.add('active');
             document.getElementById('modalOverlay').classList.add('active');
+            
+            console.log('Modal opened, loading chart...');
             
             // Load default chart (1D)
             currentChartPeriod = '1D';
@@ -1808,14 +1811,31 @@
             
             // Show loading
             document.getElementById('chart-loading').style.display = 'block';
+            document.getElementById('chart-loading').textContent = 'Loading chart...';
+            
+            // Wait for Chart.js to be available
+            if (typeof Chart === 'undefined') {
+                console.log('Waiting for Chart.js to load...');
+                await new Promise(resolve => {
+                    const checkChart = setInterval(() => {
+                        if (typeof Chart !== 'undefined') {
+                            clearInterval(checkChart);
+                            resolve();
+                        }
+                    }, 100);
+                });
+            }
             
             try {
+                console.log(`Fetching ${period} data for ${currentModalStock.symbol}`);
                 const historicalData = await fetchHistoricalData(currentModalStock.symbol, period);
+                console.log(`Got ${historicalData.length} data points`);
                 renderStockChart(historicalData, period);
                 document.getElementById('chart-loading').style.display = 'none';
             } catch (e) {
                 console.error('Error loading chart:', e);
                 document.getElementById('chart-loading').textContent = 'Failed to load chart data';
+                document.getElementById('chart-loading').style.color = 'var(--red)';
             }
         }
 
@@ -1835,12 +1855,23 @@
             const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=${interval}&range=${range}`;
             const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`;
 
+            console.log(`Fetching data from Yahoo Finance: ${symbol}, period: ${period} (${range})`);
+
             try {
                 const response = await fetch(proxyUrl);
-                if (!response.ok) throw new Error('Failed to fetch data');
+                console.log(`Response status: ${response.status}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
                 
                 const data = await response.json();
-                if (!data.chart?.result?.length) throw new Error('No data');
+                console.log('Yahoo Finance response received:', data);
+                
+                if (!data.chart?.result?.length) {
+                    console.error('No chart data in response');
+                    throw new Error('No data returned from API');
+                }
 
                 const result = data.chart.result[0];
                 const timestamps = result.timestamp || [];
@@ -1849,19 +1880,27 @@
                 const highs = quotes.high || [];
                 const lows = quotes.low || [];
 
+                console.log(`Raw data: ${timestamps.length} timestamps, ${closes.length} closes`);
+
                 // Filter out null values
                 const chartData = timestamps.map((ts, i) => ({
                     timestamp: ts * 1000,
                     close: closes[i],
                     high: highs[i],
                     low: lows[i]
-                })).filter(d => d.close !== null);
+                })).filter(d => d.close !== null && d.close !== undefined);
+
+                console.log(`Filtered data: ${chartData.length} valid points`);
 
                 // Calculate day range from data
                 if (highs.length && lows.length) {
-                    const high = Math.max(...highs.filter(h => h !== null));
-                    const low = Math.min(...lows.filter(l => l !== null));
-                    document.getElementById('stat-range').textContent = `$${low.toFixed(2)} - $${high.toFixed(2)}`;
+                    const validHighs = highs.filter(h => h !== null && h !== undefined);
+                    const validLows = lows.filter(l => l !== null && l !== undefined);
+                    if (validHighs.length && validLows.length) {
+                        const high = Math.max(...validHighs);
+                        const low = Math.min(...validLows);
+                        document.getElementById('stat-range').textContent = `$${low.toFixed(2)} - $${high.toFixed(2)}`;
+                    }
                 }
 
                 return chartData;
@@ -1873,16 +1912,24 @@
 
         function renderStockChart(data, period) {
             if (!data || data.length === 0) {
+                console.error('No chart data available');
                 document.getElementById('chart-loading').textContent = 'No data available';
+                document.getElementById('chart-loading').style.display = 'block';
                 return;
             }
 
+            console.log(`Rendering chart with ${data.length} points for period ${period}`);
+
             const ctx = document.getElementById('stockChart');
-            if (!ctx) return;
+            if (!ctx) {
+                console.error('Canvas element not found');
+                return;
+            }
 
             // Destroy previous chart
             if (stockChart) {
                 stockChart.destroy();
+                stockChart = null;
             }
 
             // Format timestamps based on period
@@ -1900,72 +1947,81 @@
             const labels = data.map(d => formatTime(d.timestamp));
             const prices = data.map(d => d.close);
 
+            console.log(`Price range: ${Math.min(...prices).toFixed(2)} - ${Math.max(...prices).toFixed(2)}`);
+
             // Determine if overall trend is up or down for coloring
             const firstPrice = prices[0];
             const lastPrice = prices[prices.length - 1];
             const isPositive = lastPrice >= firstPrice;
             const lineColor = isPositive ? '#16c784' : '#ea3943';
 
-            stockChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels,
-                    datasets: [{
-                        label: 'Price',
-                        data: prices,
-                        borderColor: lineColor,
-                        backgroundColor: isPositive ? 'rgba(22, 199, 132, 0.1)' : 'rgba(234, 57, 67, 0.1)',
-                        borderWidth: 2,
-                        fill: true,
-                        tension: 0,
-                        pointRadius: 0,
-                        pointHoverRadius: 4,
-                        pointHoverBackgroundColor: lineColor
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false
+            try {
+                stockChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels,
+                        datasets: [{
+                            label: 'Price',
+                            data: prices,
+                            borderColor: lineColor,
+                            backgroundColor: isPositive ? 'rgba(22, 199, 132, 0.1)' : 'rgba(234, 57, 67, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0,
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            pointHoverBackgroundColor: lineColor
+                        }]
                     },
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            backgroundColor: 'rgba(30, 30, 30, 0.95)',
-                            titleColor: '#e0e0e0',
-                            bodyColor: '#e0e0e0',
-                            borderColor: '#2c2c2c',
-                            borderWidth: 1,
-                            padding: 12,
-                            displayColors: false,
-                            callbacks: {
-                                title: (context) => context[0].label,
-                                label: (context) => `Price: $${context.parsed.y.toFixed(2)}`
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: 'rgba(30, 30, 30, 0.95)',
+                                titleColor: '#e0e0e0',
+                                bodyColor: '#e0e0e0',
+                                borderColor: '#2c2c2c',
+                                borderWidth: 1,
+                                padding: 12,
+                                displayColors: false,
+                                callbacks: {
+                                    title: (context) => context[0].label,
+                                    label: (context) => `Price: $${context.parsed.y.toFixed(2)}`
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                ticks: {
+                                    color: '#a0a0a0',
+                                    callback: (value) => `$${value.toFixed(2)}`
+                                },
+                                grid: { color: '#2c2c2c' }
+                            },
+                            x: {
+                                ticks: {
+                                    color: '#a0a0a0',
+                                    maxRotation: 0,
+                                    autoSkip: true,
+                                    maxTicksLimit: 8
+                                },
+                                grid: { display: false }
                             }
                         }
-                    },
-                    scales: {
-                        y: {
-                            ticks: {
-                                color: '#a0a0a0',
-                                callback: (value) => `$${value.toFixed(2)}`
-                            },
-                            grid: { color: '#2c2c2c' }
-                        },
-                        x: {
-                            ticks: {
-                                color: '#a0a0a0',
-                                maxRotation: 0,
-                                autoSkip: true,
-                                maxTicksLimit: 8
-                            },
-                            grid: { display: false }
-                        }
                     }
-                }
-            });
+                });
+                console.log('Chart rendered successfully');
+            } catch (error) {
+                console.error('Error creating chart:', error);
+                document.getElementById('chart-loading').textContent = 'Error rendering chart';
+                document.getElementById('chart-loading').style.display = 'block';
+            }
         }
         
         // Fix 13: Refresh market data
