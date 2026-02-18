@@ -2,7 +2,7 @@ name: Generate Sitemap
 
 on:
   push:
-    branches: [ main ]  # or 'master' if that's your default branch
+    branches: [ main ]
 
 permissions:
   contents: write
@@ -10,6 +10,7 @@ permissions:
 jobs:
   sitemap:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -19,16 +20,44 @@ jobs:
       - name: Generate sitemap
         uses: cicirello/generate-sitemap@v1
         with:
-          base-url-path: 'https://emerald-education-platform.github.io'
+          base-url-path: https://emerald-education-platform.github.io
           include-robots: false
+
+      - name: Normalize sitemap (UTC lastmod + cleanup)
+        run: |
+          python3 << 'EOF'
+          from datetime import datetime, timezone
+          import xml.etree.ElementTree as ET
+
+          SITEMAP = "sitemap.xml"
+          NS = {"ns": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+
+          tree = ET.parse(SITEMAP)
+          root = tree.getroot()
+
+          # Convert all <lastmod> to UTC (Z)
+          for lastmod in root.findall(".//ns:lastmod", NS):
+              dt = datetime.fromisoformat(lastmod.text)
+              dt_utc = dt.astimezone(timezone.utc)
+              lastmod.text = dt_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+          # Remove Google verification HTML file if present
+          for url in list(root.findall("ns:url", NS)):
+              loc = url.find("ns:loc", NS)
+              if loc is not None and loc.text.endswith(".html") and "google" in loc.text:
+                  root.remove(url)
+
+          tree.write(SITEMAP, encoding="utf-8", xml_declaration=True)
+          EOF
 
       - name: Commit and push if changed
         run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
           git add sitemap.xml
-          # Only commit if there are changes
-          git diff --quiet && git diff --staged --quiet || (git commit -m 'Auto-generated sitemap [skip ci]')
-          # Set remote URL with token
-          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
-          git push
+
+          if ! git diff --cached --quiet; then
+            git commit -m "Auto-generated sitemap (UTC lastmod) [skip ci]"
+            git push
+          fi
