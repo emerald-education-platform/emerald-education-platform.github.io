@@ -1216,6 +1216,7 @@
             const changeSign  = stock.change >= 0 ? '+' : '';
             const row = document.createElement('tr');
             row.setAttribute('data-symbol', stock.symbol);
+            row.style.cursor = 'pointer'; // Make it clear row is clickable
             row.innerHTML = `
                 <td><div class="stock-symbol">${stock.symbol}</div></td>
                 <td><div class="stock-name">${stock.name}</div></td>
@@ -1234,7 +1235,10 @@
                     </button>
                 </td>
             `;
-            row.onclick = () => showStockDetails(stock);
+            row.onclick = function(e) {
+                console.log('ROW CLICKED:', stock.symbol);
+                showStockDetails(stock);
+            };
             return row;
         }
         
