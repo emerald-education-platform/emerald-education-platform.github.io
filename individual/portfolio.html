@@ -162,8 +162,8 @@
         /* ── Summary Cards ── */
         .summary-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 15px;
             margin-bottom: 30px;
         }
 
@@ -177,7 +177,7 @@
             background: var(--card-bg);
             border: 1px solid var(--border-dark);
             border-radius: 12px;
-            padding: 22px;
+            padding: 16px;
             transition: transform 0.2s, box-shadow 0.2s;
         }
 
@@ -188,21 +188,22 @@
 
         .summary-card .label {
             color: var(--text-secondary);
-            font-size: 12px;
+            font-size: 11px;
             text-transform: uppercase;
-            letter-spacing: 0.8px;
-            margin-bottom: 10px;
+            letter-spacing: 0.6px;
+            margin-bottom: 8px;
+            font-weight: 600;
         }
 
         .summary-card .value {
-            font-size: 26px;
+            font-size: 22px;
             font-weight: 700;
             color: var(--text-primary);
-            margin-bottom: 6px;
+            margin-bottom: 5px;
         }
 
         .summary-card .sub {
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
         }
 
@@ -533,10 +534,13 @@
         }
 
         /* Responsive */
+        @media (max-width: 1400px) {
+            .summary-grid { grid-template-columns: repeat(4, 1fr); }
+        }
         @media (max-width: 768px) {
             .sidebar { width: 100%; position: relative; min-height: auto; }
             .main-content { margin-left: 0; padding: 15px; }
-            .summary-grid { grid-template-columns: 1fr 1fr; }
+            .summary-grid { grid-template-columns: repeat(2, 1fr); }
             .trading-panel { width: 100%; }
         }
     </style>
@@ -1524,26 +1528,86 @@
         renderPerformanceChart();
     }
 
-    function renderValueChart() {
+    async function renderValueChart() {
         const ctx = document.getElementById('valueChart');
         if (!ctx) return;
 
-        // Simulated data - in production, this would come from historical snapshots
-        const startValue = 10000;
-        const currentValue = userCash + getTotalPortfolioValue();
-        const days = 30;
-        const data = [];
-        const labels = [];
+        // Build portfolio value over time from actual transactions with REAL HISTORICAL PRICES
+        let labels = [];
+        let data = [];
 
-        for (let i = 0; i < days; i++) {
-            const progress = i / (days - 1);
-            const value = startValue + (currentValue - startValue) * progress;
-            const variance = (Math.random() - 0.5) * 200;
-            data.push(value + variance);
-            
-            const date = new Date();
-            date.setDate(date.getDate() - (days - 1 - i));
-            labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+        if (supabase && currentUser) {
+            try {
+                // Get all transactions ordered by date
+                const { data: transactions } = await supabase
+                    .from('transactions')
+                    .select('*')
+                    .eq('user_id', currentUser.id)
+                    .order('created_at', { ascending: true });
+
+                if (transactions && transactions.length > 0) {
+                    // Start with initial balance
+                    let runningCash = STARTING_BALANCE;
+                    const holdings = {}; // Track shares and avg purchase price per stock
+                    const stockPrices = {}; // Track last known price per stock
+
+                    // Add starting point
+                    labels.push('Start');
+                    data.push(STARTING_BALANCE);
+
+                    // Process each transaction
+                    transactions.forEach((t, index) => {
+                        const amount = parseFloat(t.total_amount);
+                        const shares = t.quantity;
+                        const symbol = t.stock_symbol;
+                        const pricePerShare = parseFloat(t.price_per_share);
+
+                        // Update last known price for this stock
+                        stockPrices[symbol] = pricePerShare;
+
+                        if (t.transaction_type === 'BUY') {
+                            runningCash -= amount;
+                            holdings[symbol] = (holdings[symbol] || 0) + shares;
+                        } else {
+                            runningCash += amount;
+                            holdings[symbol] = (holdings[symbol] || 0) - shares;
+                        }
+
+                        // Calculate portfolio value using ACTUAL HISTORICAL PRICES at this point in time
+                        let portfolioValue = 0;
+                        Object.keys(holdings).forEach(sym => {
+                            if (holdings[sym] > 0) {
+                                // Use the last known price for this stock (from transactions)
+                                const lastPrice = stockPrices[sym] || 0;
+                                portfolioValue += holdings[sym] * lastPrice;
+                            }
+                        });
+
+                        const totalValue = runningCash + portfolioValue;
+
+                        // Add point (show max 30 most recent transactions)
+                        if (transactions.length <= 30 || index >= transactions.length - 30) {
+                            const date = new Date(t.created_at);
+                            labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                            data.push(totalValue);
+                        }
+                    });
+
+                    // Add current value as final point with CURRENT LIVE PRICES
+                    const currentValue = userCash + getTotalPortfolioValue();
+                    labels.push('Now');
+                    data.push(currentValue);
+                }
+            } catch (e) {
+                console.error('Error building value chart:', e);
+            }
+        }
+
+        // If no data, show simple two-point chart
+        if (data.length === 0) {
+            const currentValue = userCash + getTotalPortfolioValue();
+            labels = ['Start', 'Now'];
+            data = [STARTING_BALANCE, currentValue];
         }
 
         if (valueChart) valueChart.destroy();
@@ -1558,7 +1622,7 @@
                     backgroundColor: 'rgba(16, 185, 129, 0.1)',
                     borderWidth: 2,
                     fill: true,
-                    tension: 0.4
+                    tension: 0  // Straight lines, not curved
                 }]
             },
             options: {
