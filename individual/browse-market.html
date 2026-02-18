@@ -7,6 +7,7 @@
     <link rel="icon" href="ESElogoIcon.png" type="image/png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
     <style>
         :root {
             --primary: #10b981;          /* Emerald green - kept as accent */
@@ -485,6 +486,7 @@
             display: block;
         }
         
+        /* Stock Detail Modal with Charts */
         #stock-detail-modal {
             display: none;
             position: fixed;
@@ -492,19 +494,180 @@
             left: 50%;
             transform: translate(-50%, -50%);
             background: var(--card-bg);
-            padding: 30px;
+            padding: 0;
             border-radius: 12px;
             box-shadow: var(--shadow);
             z-index: 1001;
-            max-width: 500px;
+            max-width: 900px;
             width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
+            max-height: 85vh;
+            overflow: hidden;
             border: 1px solid var(--border-dark);
         }
         
         #stock-detail-modal.active {
             display: block;
+        }
+
+        .modal-header {
+            padding: 25px 30px;
+            border-bottom: 1px solid var(--border-dark);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            color: var(--text-primary);
+            font-size: 24px;
+        }
+
+        .modal-header .close-modal {
+            font-size: 28px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            line-height: 1;
+            transition: color 0.2s;
+        }
+
+        .modal-header .close-modal:hover {
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            padding: 30px;
+            max-height: calc(85vh - 90px);
+            overflow-y: auto;
+        }
+
+        .stock-info-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .stock-info-header .price {
+            font-size: 36px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .stock-info-header .change {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .time-period-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border-dark);
+            padding-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .time-period-tabs button {
+            padding: 8px 16px;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .time-period-tabs button:hover {
+            background: var(--hover-bg);
+            color: var(--text-primary);
+        }
+
+        .time-period-tabs button.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-bottom: 25px;
+        }
+
+        .chart-loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: var(--text-secondary);
+            font-size: 14px;
+            z-index: 10;
+        }
+
+        .stock-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-item {
+            background: var(--hover-bg);
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .stat-item .label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 5px;
+        }
+
+        .stat-item .value {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .modal-actions button {
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-trade {
+            background: var(--primary);
+            color: white;
+            border: none;
+        }
+
+        .btn-trade:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+
+        .btn-close-modal {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-dark);
+        }
+
+        .btn-close-modal:hover {
+            color: var(--text-primary);
+            border-color: var(--text-secondary);
         }
         
         .mobile-menu-toggle {
@@ -590,7 +753,6 @@
         <!-- Sidebar -->
         <div class="sidebar" id="sidebar">
             <div class="logo">
-                <a href="https://emerald-education-platform.github.io" class="logo" style="text-decoration: none; cursor: pointer;"></a>
                 <img src="ESElogoIcon.png" alt="ESE">
                 Emerald Exchange
             </div>
@@ -662,12 +824,61 @@
             
             <!-- Stock Details Modal -->
             <div id="stock-detail-modal">
-                <h2 id="modal-symbol" style="color: var(--text-primary);"></h2>
-                <div id="modal-details" style="color: var(--text-secondary);"></div>
-                <button onclick="closeModal()" 
-                        style="margin-top: 20px; padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer;">
-                    Close
-                </button>
+                <div class="modal-header">
+                    <div>
+                        <h2 id="modal-symbol"></h2>
+                        <div style="font-size: 14px; color: var(--text-secondary);" id="modal-company-name"></div>
+                    </div>
+                    <span class="close-modal" onclick="closeModal()">×</span>
+                </div>
+                <div class="modal-body">
+                    <div class="stock-info-header">
+                        <div>
+                            <div class="price" id="modal-price">$0.00</div>
+                            <div class="change" id="modal-change">+$0.00 (0.00%)</div>
+                        </div>
+                    </div>
+
+                    <!-- Time Period Tabs -->
+                    <div class="time-period-tabs">
+                        <button onclick="loadChartData('1D')" class="active" id="tab-1D">1D</button>
+                        <button onclick="loadChartData('5D')" id="tab-5D">5D</button>
+                        <button onclick="loadChartData('1M')" id="tab-1M">1M</button>
+                        <button onclick="loadChartData('3M')" id="tab-3M">3M</button>
+                        <button onclick="loadChartData('6M')" id="tab-6M">6M</button>
+                        <button onclick="loadChartData('1Y')" id="tab-1Y">1Y</button>
+                    </div>
+
+                    <!-- Chart -->
+                    <div class="chart-container">
+                        <canvas id="stockChart"></canvas>
+                        <div class="chart-loading" id="chart-loading" style="display: none;">Loading chart...</div>
+                    </div>
+
+                    <!-- Stock Stats -->
+                    <div class="stock-stats-grid">
+                        <div class="stat-item">
+                            <div class="label">Volume</div>
+                            <div class="value" id="stat-volume">—</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="label">Market Cap</div>
+                            <div class="value" id="stat-marketcap">—</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="label">Day Range</div>
+                            <div class="value" id="stat-range">—</div>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="modal-actions">
+                        <button class="btn-close-modal" onclick="closeModal()">Close</button>
+                        <button class="btn-trade" onclick="tradeFromModal()">
+                            <i class="fas fa-exchange-alt"></i> Trade
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
         
@@ -1529,27 +1740,232 @@
         }
         
         // Fix 12: Show stock details modal
+        // ═══════════════════════════════════════════════════════════
+        // STOCK DETAILS MODAL WITH HISTORICAL CHARTS
+        // ═══════════════════════════════════════════════════════════
+
+        let currentModalStock = null;
+        let stockChart = null;
+        let currentChartPeriod = '1D';
+
         function showStockDetails(stock) {
-            document.getElementById('modal-symbol').textContent = `${stock.symbol} - ${stock.name}`;
+            currentModalStock = stock;
             
-            const details = `
-                <p><strong>Current Price:</strong> $${stock.current_price.toFixed(2)}</p>
-                <p><strong>Today's Change:</strong> <span class="${stock.change >= 0 ? 'positive' : 'negative'}">
-                    ${stock.change >= 0 ? '+' : ''}${stock.change.toFixed(2)} (${stock.change >= 0 ? '+' : ''}${stock.change_percent.toFixed(2)}%)
-                </span></p>
-                <p><strong>Volume:</strong> ${formatNumber(stock.volume)}</p>
-                <p><strong>Market Cap:</strong> ${stock.market_cap > 0 ? '$' + formatMarketCap(stock.market_cap) : 'N/A'}</p>
-                <p><strong>Last Updated:</strong> ${new Date().toLocaleString()}</p>
+            // Update header
+            document.getElementById('modal-symbol').textContent = stock.symbol;
+            document.getElementById('modal-company-name').textContent = stock.name;
+            
+            // Update price info
+            document.getElementById('modal-price').textContent = `$${stock.current_price.toFixed(2)}`;
+            const changeClass = stock.change >= 0 ? 'positive' : 'negative';
+            const changeSign = stock.change >= 0 ? '+' : '';
+            document.getElementById('modal-change').innerHTML = `
+                ${changeSign}$${stock.change.toFixed(2)} (${changeSign}${stock.change_percent.toFixed(2)}%)
             `;
+            document.getElementById('modal-change').className = `change ${changeClass}`;
             
-            document.getElementById('modal-details').innerHTML = details;
+            // Update stats
+            document.getElementById('stat-volume').textContent = formatNumber(stock.volume);
+            document.getElementById('stat-marketcap').textContent = stock.market_cap > 0 ? '$' + formatMarketCap(stock.market_cap) : 'N/A';
+            document.getElementById('stat-range').textContent = '—'; // Will be updated from chart data
+            
+            // Show modal
             document.getElementById('stock-detail-modal').classList.add('active');
             document.getElementById('modalOverlay').classList.add('active');
+            
+            // Load default chart (1D)
+            currentChartPeriod = '1D';
+            setActiveTab('1D');
+            loadChartData('1D');
         }
         
         function closeModal() {
             document.getElementById('stock-detail-modal').classList.remove('active');
             document.getElementById('modalOverlay').classList.remove('active');
+            if (stockChart) {
+                stockChart.destroy();
+                stockChart = null;
+            }
+        }
+
+        function tradeFromModal() {
+            closeModal();
+            openTradingPanel(currentModalStock.symbol, currentModalStock.current_price);
+        }
+
+        function setActiveTab(period) {
+            document.querySelectorAll('.time-period-tabs button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.getElementById(`tab-${period}`).classList.add('active');
+        }
+
+        async function loadChartData(period) {
+            if (!currentModalStock) return;
+            
+            currentChartPeriod = period;
+            setActiveTab(period);
+            
+            // Show loading
+            document.getElementById('chart-loading').style.display = 'block';
+            
+            try {
+                const historicalData = await fetchHistoricalData(currentModalStock.symbol, period);
+                renderStockChart(historicalData, period);
+                document.getElementById('chart-loading').style.display = 'none';
+            } catch (e) {
+                console.error('Error loading chart:', e);
+                document.getElementById('chart-loading').textContent = 'Failed to load chart data';
+            }
+        }
+
+        async function fetchHistoricalData(symbol, period) {
+            // Map period to Yahoo Finance interval and range
+            const periodMap = {
+                '1D': { range: '1d', interval: '5m' },
+                '5D': { range: '5d', interval: '15m' },
+                '1M': { range: '1mo', interval: '1h' },
+                '3M': { range: '3mo', interval: '1d' },
+                '6M': { range: '6mo', interval: '1d' },
+                '1Y': { range: '1y', interval: '1d' }
+            };
+
+            const { range, interval } = periodMap[period];
+            const yahooSymbol = symbol.replace('.', '-');
+            const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=${interval}&range=${range}`;
+            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`;
+
+            try {
+                const response = await fetch(proxyUrl);
+                if (!response.ok) throw new Error('Failed to fetch data');
+                
+                const data = await response.json();
+                if (!data.chart?.result?.length) throw new Error('No data');
+
+                const result = data.chart.result[0];
+                const timestamps = result.timestamp || [];
+                const quotes = result.indicators?.quote?.[0] || {};
+                const closes = quotes.close || [];
+                const highs = quotes.high || [];
+                const lows = quotes.low || [];
+
+                // Filter out null values
+                const chartData = timestamps.map((ts, i) => ({
+                    timestamp: ts * 1000,
+                    close: closes[i],
+                    high: highs[i],
+                    low: lows[i]
+                })).filter(d => d.close !== null);
+
+                // Calculate day range from data
+                if (highs.length && lows.length) {
+                    const high = Math.max(...highs.filter(h => h !== null));
+                    const low = Math.min(...lows.filter(l => l !== null));
+                    document.getElementById('stat-range').textContent = `$${low.toFixed(2)} - $${high.toFixed(2)}`;
+                }
+
+                return chartData;
+            } catch (error) {
+                console.error('Error fetching historical data:', error);
+                throw error;
+            }
+        }
+
+        function renderStockChart(data, period) {
+            if (!data || data.length === 0) {
+                document.getElementById('chart-loading').textContent = 'No data available';
+                return;
+            }
+
+            const ctx = document.getElementById('stockChart');
+            if (!ctx) return;
+
+            // Destroy previous chart
+            if (stockChart) {
+                stockChart.destroy();
+            }
+
+            // Format timestamps based on period
+            const formatTime = (timestamp) => {
+                const date = new Date(timestamp);
+                if (period === '1D') {
+                    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                } else if (period === '5D') {
+                    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                } else {
+                    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                }
+            };
+
+            const labels = data.map(d => formatTime(d.timestamp));
+            const prices = data.map(d => d.close);
+
+            // Determine if overall trend is up or down for coloring
+            const firstPrice = prices[0];
+            const lastPrice = prices[prices.length - 1];
+            const isPositive = lastPrice >= firstPrice;
+            const lineColor = isPositive ? '#16c784' : '#ea3943';
+
+            stockChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'Price',
+                        data: prices,
+                        borderColor: lineColor,
+                        backgroundColor: isPositive ? 'rgba(22, 199, 132, 0.1)' : 'rgba(234, 57, 67, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        pointHoverBackgroundColor: lineColor
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(30, 30, 30, 0.95)',
+                            titleColor: '#e0e0e0',
+                            bodyColor: '#e0e0e0',
+                            borderColor: '#2c2c2c',
+                            borderWidth: 1,
+                            padding: 12,
+                            displayColors: false,
+                            callbacks: {
+                                title: (context) => context[0].label,
+                                label: (context) => `Price: $${context.parsed.y.toFixed(2)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            ticks: {
+                                color: '#a0a0a0',
+                                callback: (value) => `$${value.toFixed(2)}`
+                            },
+                            grid: { color: '#2c2c2c' }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#a0a0a0',
+                                maxRotation: 0,
+                                autoSkip: true,
+                                maxTicksLimit: 8
+                            },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
         }
         
         // Fix 13: Refresh market data
