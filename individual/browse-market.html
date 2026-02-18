@@ -185,8 +185,21 @@
             font-size: 14px; 
         }
         
-        .positive { color: var(--green); }
-        .negative { color: var(--red); }
+        .positive { 
+            color: var(--green) !important; 
+            font-weight: 600;
+        }
+        .negative { 
+            color: var(--red) !important; 
+            font-weight: 600;
+        }
+        
+        /* Sparkline Chart */
+        .sparkline-canvas {
+            width: 100px;
+            height: 40px;
+            display: block;
+        }
         
         /* Trading Panel */
         .trading-panel {
@@ -604,13 +617,14 @@
                             <th>Price</th>
                             <th>Change</th>
                             <th>% Change</th>
+                            <th>Trend</th>
                             <th>Volume</th>
                             <th>Market Cap</th>
                             <th>Action</th>
                         </tr>
                     </thead>
                     <tbody id="stocks-table-body">
-                        <tr><td colspan="8" style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                        <tr><td colspan="9" style="text-align: center; padding: 40px; color: var(--text-secondary);">
                             <div class="loading-spinner"></div> Loading real market data...
                         </td></tr>
                     </tbody>
@@ -1411,7 +1425,7 @@
             } else {
                 // Show searching message
                 const tableBody = document.getElementById('stocks-table-body');
-                tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px; color: var(--text-secondary);">Searching for "' + query + '"...</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px; color: var(--text-secondary);">Searching for "' + query + '"...</td></tr>';
             }
             
             // Wait 800ms after user stops typing to search Yahoo Finance
@@ -1445,7 +1459,7 @@
                     // Stock not found
                     const tableBody = document.getElementById('stocks-table-body');
                     tableBody.innerHTML = `
-                        <tr><td colspan="7" style="text-align: center; padding: 40px;">
+                        <tr><td colspan="9" style="text-align: center; padding: 40px;">
                             <div style="color: var(--text-secondary); margin-bottom: 10px;">
                                 <i class="fas fa-search" style="font-size: 48px; opacity: 0.3;"></i>
                             </div>
@@ -1459,7 +1473,7 @@
             } catch (error) {
                 console.error('Search error:', error);
                 const tableBody = document.getElementById('stocks-table-body');
-                tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px; color: var(--red);">Error searching for stock. Please try again.</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px; color: var(--red);">Error searching for stock. Please try again.</td></tr>';
             }
         }
         
@@ -1664,7 +1678,7 @@
                 console.error('Dashboard initialization error:', error);
                 const tableBody = document.getElementById('stocks-table-body');
                 tableBody.innerHTML = `
-                    <tr><td colspan="7" style="text-align: center; padding: 40px; color: var(--red);">
+                    <tr><td colspan="9" style="text-align: center; padding: 40px; color: var(--red);">
                         Error initializing dashboard: ${error.message}
                     </td></tr>
                 `;
@@ -1738,7 +1752,7 @@
                 
                 // Show loading state
                 const tableBody = document.getElementById('stocks-table-body');
-                tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px;"><div class="loading-spinner"></div> Loading real-time market data from Yahoo Finance...</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px;"><div class="loading-spinner"></div> Loading real-time market data from Yahoo Finance...</td></tr>';
                 
                 console.log(`Fetching data for ${TRACKED_SYMBOLS.length} stocks...`);
                 
@@ -1792,8 +1806,8 @@
                 
                 console.log(`Fetching quote for: ${symbol} (Yahoo format: ${yahooSymbol})`);
                 
-                // Using CORS proxy to access Yahoo Finance
-                const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=1d`;
+                // Fetch 1 month of data to get both current quote and historical data for sparkline
+                const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=1mo`;
                 const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`;
                 
                 const response = await fetch(proxyUrl);
@@ -1831,7 +1845,11 @@
                 const volumes = indicators.volume?.filter(v => v != null) || [];
                 const volume = volumes.length > 0 ? volumes[volumes.length - 1] : 0;
                 
-                // Return with original symbol format (user's input)
+                // Extract historical closing prices for sparkline (last 20 points)
+                const closePrices = indicators.close?.filter(price => price != null) || [];
+                const history = closePrices.length > 0 ? closePrices.slice(-20) : null;
+                
+                // Return with original symbol format (user's input) and historical data
                 return {
                     symbol: symbol,
                     name: getCompanyName(symbol),
@@ -1839,11 +1857,53 @@
                     change: change,
                     change_percent: changePercent,
                     volume: volume,
-                    market_cap: quote.marketCap || getEstimatedMarketCap(symbol, currentPrice)
+                    market_cap: quote.marketCap || getEstimatedMarketCap(symbol, currentPrice),
+                    history: history  // Include historical data
                 };
                 
             } catch (error) {
                 console.error(`Error fetching quote for ${symbol}:`, error.message);
+                return null;
+            }
+        }
+        
+        // Fetch historical price data for sparkline
+        async function fetchStockHistory(symbol) {
+            try {
+                const yahooSymbol = symbol.replace('.', '-');
+                
+                // Fetch 1 month of daily data
+                const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=1mo`;
+                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`;
+                
+                const response = await fetch(proxyUrl);
+                
+                if (!response.ok) {
+                    console.error(`HTTP error for ${symbol} history: ${response.status}`);
+                    return null;
+                }
+                
+                const data = await response.json();
+                
+                if (!data.chart || !data.chart.result || data.chart.result.length === 0) {
+                    return null;
+                }
+                
+                const result = data.chart.result[0];
+                const indicators = result.indicators?.quote?.[0];
+                
+                if (!indicators || !indicators.close) {
+                    return null;
+                }
+                
+                // Get closing prices, filter out nulls
+                const closePrices = indicators.close.filter(price => price != null);
+                
+                // Return last 20 data points for smooth sparkline
+                return closePrices.slice(-20);
+                
+            } catch (error) {
+                console.error(`Error fetching history for ${symbol}:`, error.message);
                 return null;
             }
         }
@@ -1944,27 +2004,110 @@
             console.log(`Loaded ${stocksData.length} demo stocks successfully`);
         }
         
+        // Generate sparkline data (7 day trend simulation)
+        function generateSparklineData(currentPrice, changePercent) {
+            const points = 20; // 20 data points for smooth trend
+            const data = [];
+            
+            // Start price is current price minus the change
+            const startPrice = currentPrice / (1 + changePercent / 100);
+            
+            // Generate a realistic-looking trend
+            let price = startPrice;
+            for (let i = 0; i < points; i++) {
+                // Add some random variation
+                const randomChange = (Math.random() - 0.5) * (currentPrice * 0.02);
+                
+                // Trend towards the current price
+                const trendFactor = i / (points - 1);
+                price = startPrice + (currentPrice - startPrice) * trendFactor + randomChange;
+                
+                data.push(Math.max(price, 0));
+            }
+            
+            // Ensure last point is exactly the current price
+            data[data.length - 1] = currentPrice;
+            
+            return data;
+        }
+        
+        // Draw sparkline on canvas
+        function drawSparkline(canvasId, data, isPositive) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width = 100;
+            const height = canvas.height = 40;
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, width, height);
+            
+            if (!data || data.length < 2) return;
+            
+            // Find min and max for scaling
+            const min = Math.min(...data);
+            const max = Math.max(...data);
+            const range = max - min || 1;
+            
+            // Draw line
+            ctx.beginPath();
+            ctx.strokeStyle = isPositive ? '#16c784' : '#ea3943';
+            ctx.lineWidth = 1.5;
+            
+            data.forEach((value, i) => {
+                const x = (i / (data.length - 1)) * width;
+                const y = height - ((value - min) / range) * (height - 4) - 2;
+                
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+            
+            ctx.stroke();
+            
+            // Fill area under line with gradient
+            ctx.lineTo(width, height);
+            ctx.lineTo(0, height);
+            ctx.closePath();
+            
+            const gradient = ctx.createLinearGradient(0, 0, 0, height);
+            if (isPositive) {
+                gradient.addColorStop(0, 'rgba(22, 199, 132, 0.2)');
+                gradient.addColorStop(1, 'rgba(22, 199, 132, 0)');
+            } else {
+                gradient.addColorStop(0, 'rgba(234, 57, 67, 0.2)');
+                gradient.addColorStop(1, 'rgba(234, 57, 67, 0)');
+            }
+            
+            ctx.fillStyle = gradient;
+            ctx.fill();
+        }
+        
         // Display stocks in the table
         function displayStocks(stocks) {
             const tableBody = document.getElementById('stocks-table-body');
             
             if (!stocks || stocks.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px;">No stocks match your search.</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px;">No stocks match your search.</td></tr>';
                 return;
             }
             
-            tableBody.innerHTML = stocks.map(stock => `
+            tableBody.innerHTML = stocks.map((stock, index) => `
                 <tr onclick="openTradingPanel(${JSON.stringify(stock).replace(/"/g, '&quot;')})">
-                    <td>
-                        <div class="stock-symbol">${stock.symbol}</div>
-                        <div class="stock-name">${stock.name}</div>
-                    </td>
-                    <td>$${stock.current_price.toFixed(2)}</td>
+                    <td>${stock.symbol}</td>
+                    <td>${stock.name}</td>
+                    <td style="font-weight: 600;">$${stock.current_price.toFixed(2)}</td>
                     <td class="${stock.change >= 0 ? 'positive' : 'negative'}">
                         ${stock.change >= 0 ? '+' : ''}${stock.change.toFixed(2)}
                     </td>
                     <td class="${stock.change_percent >= 0 ? 'positive' : 'negative'}">
                         ${stock.change_percent >= 0 ? '+' : ''}${stock.change_percent.toFixed(2)}%
+                    </td>
+                    <td>
+                        <canvas id="sparkline-${index}" class="sparkline-canvas"></canvas>
                     </td>
                     <td>${formatNumber(stock.volume)}</td>
                     <td>$${formatMarketCap(stock.market_cap)}</td>
@@ -1975,6 +2118,31 @@
                     </td>
                 </tr>
             `).join('');
+            
+            // Fetch historical data and draw sparklines
+            setTimeout(async () => {
+                for (let i = 0; i < stocks.length; i++) {
+                    const stock = stocks[i];
+                    let historicalData = stock.history;
+                    
+                    // Fetch historical data if not already present
+                    if (!historicalData) {
+                        historicalData = await fetchStockHistory(stock.symbol);
+                    }
+                    
+                    // Use real data if available, otherwise generate fallback
+                    const sparklineData = historicalData && historicalData.length > 0
+                        ? historicalData
+                        : generateSparklineData(stock.current_price, stock.change_percent);
+                    
+                    drawSparkline(`sparkline-${i}`, sparklineData, stock.change >= 0);
+                    
+                    // Store historical data on the stock object for future use
+                    if (historicalData) {
+                        stock.history = historicalData;
+                    }
+                }
+            }, 10);
         }
         
         // Initial setup
@@ -1988,7 +2156,7 @@
                     console.error('Failed to initialize Supabase');
                     const tableBody = document.getElementById('stocks-table-body');
                     tableBody.innerHTML = `
-                        <tr><td colspan="7" style="text-align: center; padding: 40px;">
+                        <tr><td colspan="9" style="text-align: center; padding: 40px;">
                             <div style="color: var(--red); margin-bottom: 15px;">
                                 <strong>⚠️ Error Loading Supabase</strong>
                             </div>
@@ -2003,7 +2171,7 @@
                     console.warn('⚠️ WARNING: Replace supabaseUrl and supabaseKey with your actual values');
                     const tableBody = document.getElementById('stocks-table-body');
                     tableBody.innerHTML = `
-                        <tr><td colspan="7" style="text-align: center; padding: 40px;">
+                        <tr><td colspan="9" style="text-align: center; padding: 40px;">
                             <div style="color: var(--red); margin-bottom: 15px;">
                                 <strong>⚠️ Configuration Required</strong>
                             </div>
