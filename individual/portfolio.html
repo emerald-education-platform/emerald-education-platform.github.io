@@ -563,7 +563,7 @@
     <!-- ── Sidebar ── -->
     <div class="sidebar">
         <div class="logo">
-            <img src="ESElogoIcon.png" alt="ESE Logo">
+            <img src="ESElogoIcon.png" alt="ESE">
             Emerald Exchange
         </div>
 
@@ -1287,6 +1287,7 @@
         try {
             await loadUserDataFromSupabase();
             await displayPortfolio();
+            await savePortfolioSnapshot(); // Update snapshot with latest prices
             await updateAdvancedMetrics();
             await renderCharts();
             lastUpdatedTime = Date.now();
@@ -1317,6 +1318,56 @@
     // ── Refresh ──
     async function refreshPortfolio() {
         await forceRefresh();
+    }
+
+    // ══════════════════════════════════════════════════════
+    // PORTFOLIO HISTORY SNAPSHOTS
+    // ══════════════════════════════════════════════════════
+
+    async function savePortfolioSnapshot() {
+        if (!supabase || !currentUser) return;
+
+        try {
+            const totalValue = userCash + getTotalPortfolioValue();
+            const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+            // Check if we already have a snapshot for today
+            const { data: existing } = await supabase
+                .from('portfolio_history')
+                .select('*')
+                .eq('user_id', currentUser.id)
+                .eq('snapshot_date', today)
+                .maybeSingle();
+
+            if (existing) {
+                // Update today's snapshot
+                await supabase
+                    .from('portfolio_history')
+                    .update({
+                        total_value: totalValue,
+                        cash_balance: userCash,
+                        portfolio_value: getTotalPortfolioValue()
+                    })
+                    .eq('user_id', currentUser.id)
+                    .eq('snapshot_date', today);
+                console.log(`Updated today's snapshot: $${totalValue.toFixed(2)}`);
+            } else {
+                // Create new snapshot for today
+                await supabase
+                    .from('portfolio_history')
+                    .insert({
+                        user_id: currentUser.id,
+                        snapshot_date: today,
+                        total_value: totalValue,
+                        cash_balance: userCash,
+                        portfolio_value: getTotalPortfolioValue()
+                    });
+                console.log(`Saved new snapshot for ${today}: $${totalValue.toFixed(2)}`);
+            }
+        } catch (error) {
+            // Table might not exist yet - that's OK, will show transaction-based chart
+            console.log('Portfolio history table not available yet:', error.message);
+        }
     }
 
     // ══════════════════════════════════════════════════════
@@ -1544,71 +1595,96 @@
         const ctx = document.getElementById('valueChart');
         if (!ctx) return;
 
-        // Build portfolio value over time from actual transactions with REAL HISTORICAL PRICES
         let labels = [];
         let data = [];
 
         if (supabase && currentUser) {
             try {
-                // Get all transactions ordered by date
-                const { data: transactions } = await supabase
-                    .from('transactions')
+                // First, try to load historical snapshots
+                const { data: snapshots, error: snapshotError } = await supabase
+                    .from('portfolio_history')
                     .select('*')
                     .eq('user_id', currentUser.id)
-                    .order('created_at', { ascending: true });
+                    .order('snapshot_date', { ascending: true });
 
-                if (transactions && transactions.length > 0) {
-                    // Start with initial balance
-                    let runningCash = STARTING_BALANCE;
-                    const holdings = {}; // Track shares and avg purchase price per stock
-                    const stockPrices = {}; // Track last known price per stock
-
-                    // Add starting point
+                if (!snapshotError && snapshots && snapshots.length > 0) {
+                    // Use snapshot-based chart (much more accurate!)
+                    console.log(`Building chart from ${snapshots.length} daily snapshots`);
+                    
                     labels.push('Start');
                     data.push(STARTING_BALANCE);
 
-                    // Process each transaction
-                    transactions.forEach((t, index) => {
-                        const amount = parseFloat(t.total_amount);
-                        const shares = t.quantity;
-                        const symbol = t.stock_symbol;
-                        const pricePerShare = parseFloat(t.price_per_share);
+                    snapshots.forEach(snapshot => {
+                        const date = new Date(snapshot.snapshot_date);
+                        const label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                        labels.push(label);
+                        data.push(parseFloat(snapshot.total_value));
+                    });
 
-                        // Update last known price for this stock
-                        stockPrices[symbol] = pricePerShare;
+                    // Add current value if it's different from last snapshot
+                    const currentValue = userCash + getTotalPortfolioValue();
+                    const lastSnapshot = snapshots[snapshots.length - 1];
+                    const today = new Date().toISOString().split('T')[0];
+                    
+                    if (lastSnapshot.snapshot_date !== today) {
+                        labels.push('Now');
+                        data.push(currentValue);
+                    }
+                } else {
+                    // Fallback: Build from transactions (old method)
+                    console.log('No snapshots found, building chart from transactions');
+                    
+                    const { data: transactions } = await supabase
+                        .from('transactions')
+                        .select('*')
+                        .eq('user_id', currentUser.id)
+                        .order('created_at', { ascending: true });
 
-                        if (t.transaction_type === 'BUY') {
-                            runningCash -= amount;
-                            holdings[symbol] = (holdings[symbol] || 0) + shares;
-                        } else {
-                            runningCash += amount;
-                            holdings[symbol] = (holdings[symbol] || 0) - shares;
-                        }
+                    if (transactions && transactions.length > 0) {
+                        let runningCash = STARTING_BALANCE;
+                        const holdings = {};
+                        const stockPrices = {};
 
-                        // Calculate portfolio value using ACTUAL HISTORICAL PRICES at this point in time
-                        let portfolioValue = 0;
-                        Object.keys(holdings).forEach(sym => {
-                            if (holdings[sym] > 0) {
-                                // Use the last known price for this stock (from transactions)
-                                const lastPrice = stockPrices[sym] || 0;
-                                portfolioValue += holdings[sym] * lastPrice;
+                        labels.push('Start');
+                        data.push(STARTING_BALANCE);
+
+                        transactions.forEach((t, index) => {
+                            const amount = parseFloat(t.total_amount);
+                            const shares = t.quantity;
+                            const symbol = t.stock_symbol;
+                            const pricePerShare = parseFloat(t.price_per_share);
+
+                            stockPrices[symbol] = pricePerShare;
+
+                            if (t.transaction_type === 'BUY') {
+                                runningCash -= amount;
+                                holdings[symbol] = (holdings[symbol] || 0) + shares;
+                            } else {
+                                runningCash += amount;
+                                holdings[symbol] = (holdings[symbol] || 0) - shares;
+                            }
+
+                            let portfolioValue = 0;
+                            Object.keys(holdings).forEach(sym => {
+                                if (holdings[sym] > 0) {
+                                    const lastPrice = stockPrices[sym] || 0;
+                                    portfolioValue += holdings[sym] * lastPrice;
+                                }
+                            });
+
+                            const totalValue = runningCash + portfolioValue;
+
+                            if (transactions.length <= 30 || index >= transactions.length - 30) {
+                                const date = new Date(t.created_at);
+                                labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                                data.push(totalValue);
                             }
                         });
 
-                        const totalValue = runningCash + portfolioValue;
-
-                        // Add point (show max 30 most recent transactions)
-                        if (transactions.length <= 30 || index >= transactions.length - 30) {
-                            const date = new Date(t.created_at);
-                            labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
-                            data.push(totalValue);
-                        }
-                    });
-
-                    // Add current value as final point with CURRENT LIVE PRICES
-                    const currentValue = userCash + getTotalPortfolioValue();
-                    labels.push('Now');
-                    data.push(currentValue);
+                        const currentValue = userCash + getTotalPortfolioValue();
+                        labels.push('Now');
+                        data.push(currentValue);
+                    }
                 }
             } catch (e) {
                 console.error('Error building value chart:', e);
@@ -1634,7 +1710,7 @@
                     backgroundColor: 'rgba(16, 185, 129, 0.1)',
                     borderWidth: 2,
                     fill: true,
-                    tension: 0  // Straight lines, not curved
+                    tension: 0
                 }]
             },
             options: {
@@ -1648,6 +1724,22 @@
                         }
                     }
                 },
+                scales: {
+                    y: {
+                        ticks: {
+                            color: '#a0a0a0',
+                            callback: (value) => `$${value.toLocaleString()}`
+                        },
+                        grid: { color: '#2c2c2c' }
+                    },
+                    x: {
+                        ticks: { color: '#a0a0a0' },
+                        grid: { color: '#2c2c2c' }
+                    }
+                }
+            }
+        });
+    }
                 scales: {
                     y: {
                         ticks: { 
@@ -1804,6 +1896,7 @@
         await ready();
         await loadUserDataFromSupabase();
         await displayPortfolio();
+        await savePortfolioSnapshot(); // Save today's snapshot
         await updateAdvancedMetrics();
         await renderCharts();
         lastUpdatedTime = Date.now();
