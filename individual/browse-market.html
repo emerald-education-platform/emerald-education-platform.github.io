@@ -659,6 +659,21 @@
             transform: translateY(-1px);
         }
 
+        .btn-watchlist {
+            background: #f59e0b;
+            color: white;
+            border: none;
+        }
+
+        .btn-watchlist:hover {
+            background: #d97706;
+            transform: translateY(-1px);
+        }
+
+        .btn-watchlist.added {
+            background: var(--green);
+        }
+
         .btn-close-modal {
             background: transparent;
             color: var(--text-secondary);
@@ -876,6 +891,9 @@
                     <!-- Actions -->
                     <div class="modal-actions">
                         <button class="btn-close-modal" onclick="closeModal()">Close</button>
+                        <button class="btn-watchlist" onclick="addToWatchlistFromModal()" id="watchlist-btn">
+                            <i class="fas fa-star"></i> Add to Watchlist
+                        </button>
                         <button class="btn-trade" onclick="tradeFromModal()">
                             <i class="fas fa-exchange-alt"></i> Trade
                         </button>
@@ -1805,6 +1823,63 @@
         function tradeFromModal() {
             closeModal();
             openTradingPanel(currentModalStock.symbol, currentModalStock.current_price);
+        }
+
+        async function addToWatchlistFromModal() {
+            if (!currentModalStock || !supabase || !currentUser) {
+                showToast('Error', 'Unable to add to watchlist', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('watchlist-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
+
+            try {
+                // Check if already in watchlist
+                const { data: existing } = await supabase
+                    .from('watchlist')
+                    .select('*')
+                    .eq('user_id', currentUser.id)
+                    .eq('stock_symbol', currentModalStock.symbol)
+                    .maybeSingle();
+
+                if (existing) {
+                    showToast('Already Added', `${currentModalStock.symbol} is already in your watchlist`, 'error');
+                    btn.innerHTML = '<i class="fas fa-check"></i> In Watchlist';
+                    btn.classList.add('added');
+                    setTimeout(() => {
+                        btn.disabled = false;
+                    }, 1500);
+                    return;
+                }
+
+                // Add to watchlist
+                const { error } = await supabase
+                    .from('watchlist')
+                    .insert({
+                        user_id: currentUser.id,
+                        stock_symbol: currentModalStock.symbol
+                    });
+
+                if (error) throw error;
+
+                showToast('Added!', `${currentModalStock.symbol} added to watchlist`, 'success');
+                btn.innerHTML = '<i class="fas fa-check"></i> Added to Watchlist';
+                btn.classList.add('added');
+                
+                setTimeout(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-star"></i> Add to Watchlist';
+                    btn.classList.remove('added');
+                }, 2000);
+
+            } catch (error) {
+                console.error('Error adding to watchlist:', error);
+                showToast('Error', 'Failed to add to watchlist', 'error');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-star"></i> Add to Watchlist';
+            }
         }
 
         function setActiveTab(period) {
