@@ -672,6 +672,109 @@
             margin-top: 15px;
         }
 
+        /* ── Confirm Dialog ── */
+        .confirm-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .confirm-overlay.active {
+            display: flex;
+        }
+
+        .confirm-dialog {
+            background: var(--card-bg);
+            border: 1px solid var(--border-dark);
+            border-radius: 14px;
+            padding: 32px 28px 24px;
+            width: 360px;
+            max-width: 90vw;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+            text-align: center;
+            animation: confirmPop 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes confirmPop {
+            from { opacity: 0; transform: scale(0.88); }
+            to   { opacity: 1; transform: scale(1); }
+        }
+
+        .confirm-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: rgba(234,57,67,0.12);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 18px;
+        }
+
+        .confirm-icon i {
+            font-size: 22px;
+            color: var(--red);
+        }
+
+        .confirm-dialog h3 {
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .confirm-dialog p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            margin-bottom: 24px;
+        }
+
+        .confirm-dialog p strong {
+            color: var(--text-primary);
+        }
+
+        .confirm-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .confirm-buttons button {
+            flex: 1;
+            padding: 11px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        .btn-confirm-cancel {
+            background: var(--hover-bg);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-dark) !important;
+        }
+
+        .btn-confirm-cancel:hover {
+            color: var(--text-primary);
+            border-color: var(--text-secondary) !important;
+        }
+
+        .btn-confirm-delete {
+            background: var(--red);
+            color: white;
+        }
+
+        .btn-confirm-delete:hover {
+            opacity: 0.88;
+            transform: translateY(-1px);
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .sidebar { width: 100%; position: relative; min-height: auto; }
@@ -876,6 +979,21 @@
         <button class="btn-buy" onclick="executeTrade()" id="execute-btn">
             Execute Buy Order
         </button>
+    </div>
+</div>
+
+<!-- Confirm Delete Dialog -->
+<div class="confirm-overlay" id="confirmOverlay" onclick="if(event.target===this) closeConfirmDialog()">
+    <div class="confirm-dialog">
+        <div class="confirm-icon">
+            <i class="fas fa-trash-alt"></i>
+        </div>
+        <h3>Remove from Watchlist</h3>
+        <p>Are you sure you want to remove <strong id="confirm-symbol-name"></strong> from your watchlist?</p>
+        <div class="confirm-buttons">
+            <button class="btn-confirm-cancel" onclick="closeConfirmDialog()">Cancel</button>
+            <button class="btn-confirm-delete" id="confirm-delete-btn">Remove</button>
+        </div>
     </div>
 </div>
 
@@ -1195,25 +1313,35 @@
     }
 
     // ── Remove from Watchlist ──
-    async function removeFromWatchlist(symbol) {
-        if (!confirm(`Remove ${symbol} from watchlist?`)) return;
+    function removeFromWatchlist(symbol) {
+        document.getElementById('confirm-symbol-name').textContent = symbol;
+        document.getElementById('confirmOverlay').classList.add('active');
 
-        try {
-            const { error } = await supabase
-                .from('watchlist')
-                .delete()
-                .eq('user_id', currentUser.id)
-                .eq('stock_symbol', symbol);
+        // Wire up the confirm button
+        const btn = document.getElementById('confirm-delete-btn');
+        btn.onclick = async () => {
+            closeConfirmDialog();
+            try {
+                const { error } = await supabase
+                    .from('watchlist')
+                    .delete()
+                    .eq('user_id', currentUser.id)
+                    .eq('stock_symbol', symbol);
 
-            if (error) throw error;
+                if (error) throw error;
 
-            showToast('Removed', `${symbol} removed from watchlist`, 'success');
-            await loadWatchlist();
+                showToast('Removed', `${symbol} removed from watchlist`, 'success');
+                await loadWatchlist();
 
-        } catch (error) {
-            console.error('Error removing from watchlist:', error);
-            showToast('Error', 'Failed to remove stock', 'error');
-        }
+            } catch (error) {
+                console.error('Error removing from watchlist:', error);
+                showToast('Error', 'Failed to remove stock', 'error');
+            }
+        };
+    }
+
+    function closeConfirmDialog() {
+        document.getElementById('confirmOverlay').classList.remove('active');
     }
 
     // ── Format Numbers ──
