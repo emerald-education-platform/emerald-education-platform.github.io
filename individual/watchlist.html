@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Watchlist - Emerald Exchange</title>
+    <link rel="icon" href="ESElogoIcon.png" type="image/png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js" defer></script>
+    <style>
+        :root {
+            --primary: #10b981;
+            --primary-dark: #0da271;
+            --dark-bg: #121212;
+            --card-bg: #1e1e1e;
+            --sidebar-bg: #1a1a1a;
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --border-dark: #2c2c2c;
+            --green: #16c784;
+            --red: #ea3943;
+            --hover-bg: #2a2a2a;
+            --table-header-bg: #252525;
+            --shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        a { text-decoration: none; color: inherit; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--dark-bg);
+            color: var(--text-primary);
+        }
+
+        .dashboard-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* ── Sidebar ── */
+        .sidebar {
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--border-dark);
+            padding: 20px;
+            width: 250px;
+            min-height: 100vh;
+            position: fixed;
+            top: 0; left: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 30px;
+            padding: 5px 0;
+        }
+
+        .logo img {
+            width: 36px;
+            height: 36px;
+            object-fit: contain;
+        }
+
+        .nav-item {
+            padding: 12px 15px;
+            margin: 4px 0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+        }
+
+        .nav-item i { width: 18px; text-align: center; }
+
+        .nav-item:hover {
+            background: var(--hover-bg);
+            color: var(--text-primary);
+        }
+
+        .nav-item.active {
+            background: var(--hover-bg);
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .sidebar-footer {
+            margin-top: auto;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-dark);
+        }
+
+        /* ── Main Content ── */
+        .main-content {
+            margin-left: 250px;
+            flex: 1;
+            padding: 30px;
+        }
+
+        /* ── Page Header ── */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 20px 25px;
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .page-header h1 {
+            font-size: 22px;
+            color: var(--text-primary);
+        }
+
+        .header-stats {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .header-stats span {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        /* ── Add Stock Section ── */
+        .add-stock-section {
+            background: var(--card-bg);
+            border: 1px solid var(--border-dark);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .add-stock-section input {
+            flex: 1;
+            padding: 12px 15px;
+            background: var(--hover-bg);
+            border: 1px solid var(--border-dark);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .add-stock-section input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .add-stock-section input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .btn-add {
+            padding: 12px 24px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-add:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+
+        .btn-add:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* ── Watchlist Table ── */
+        .section-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-dark);
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: var(--shadow);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .watchlist-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .watchlist-table th {
+            background: var(--table-header-bg);
+            padding: 13px 15px;
+            text-align: left;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        .watchlist-table th:first-child { border-radius: 8px 0 0 8px; }
+        .watchlist-table th:last-child  { border-radius: 0 8px 8px 0; }
+
+        .watchlist-table td {
+            padding: 15px;
+            border-top: 1px solid var(--border-dark);
+            white-space: nowrap;
+        }
+
+        .watchlist-table tbody tr {
+            transition: background 0.15s;
+            cursor: pointer;
+        }
+
+        .watchlist-table tbody tr:hover {
+            background: var(--hover-bg);
+        }
+
+        .stock-symbol {
+            font-weight: 700;
+            color: var(--primary);
+            font-size: 14px;
+        }
+
+        .stock-name {
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        .positive { color: var(--green); }
+        .negative { color: var(--red); }
+
+        .btn-remove {
+            padding: 6px 12px;
+            background: transparent;
+            color: var(--red);
+            border: 1px solid var(--red);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .btn-remove:hover {
+            background: var(--red);
+            color: white;
+        }
+
+        .btn-trade {
+            padding: 8px 15px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn-trade:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 15px;
+            opacity: 0.3;
+        }
+
+        .empty-state p {
+            font-size: 18px;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        /* Toast */
+        .toast-container {
+            position: fixed;
+            top: 20px; right: 20px;
+            z-index: 10000;
+        }
+
+        .toast {
+            background: var(--card-bg);
+            border-left: 4px solid var(--primary);
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin-bottom: 12px;
+            min-width: 300px;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.6);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .toast.success { border-left-color: var(--green); }
+        .toast.error { border-left-color: var(--red); }
+        .toast-icon { font-size: 22px; }
+        .toast.success .toast-icon { color: var(--green); }
+        .toast.error .toast-icon { color: var(--red); }
+        .toast-content { flex: 1; }
+        .toast-title { font-weight: 600; font-size: 14px; }
+        .toast-message { font-size: 13px; color: var(--text-secondary); }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(400px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Auto-refresh indicator */
+        .btn-refresh {
+            padding: 8px 16px;
+            background: transparent;
+            border: 1px solid var(--border-dark);
+            color: var(--text-secondary);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-refresh:hover {
+            color: var(--text-primary);
+            border-color: var(--text-secondary);
+        }
+
+        .btn-refresh:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar { width: 100%; position: relative; min-height: auto; }
+            .main-content { margin-left: 0; padding: 15px; }
+            .add-stock-section { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+<div class="dashboard-container">
+
+    <!-- ── Sidebar ── -->
+    <div class="sidebar">
+        <div class="logo">
+            <img src="ESElogoIcon.png" alt="ESE">
+            Emerald Exchange
+        </div>
+
+        <a href="browse-market.html" class="nav-item">
+            <i class="fas fa-chart-line"></i> Browse Market
+        </a>
+        <a href="portfolio.html" class="nav-item">
+            <i class="fas fa-wallet"></i> My Portfolio
+        </a>
+        <a href="transactions.html" class="nav-item">
+            <i class="fas fa-history"></i> Transactions
+        </a>
+        <a href="watchlist.html" class="nav-item active">
+            <i class="fas fa-star"></i> Watchlist
+        </a>
+
+        <div class="sidebar-footer">
+            <a href="#" class="nav-item" onclick="logout()">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </div>
+    </div>
+
+    <!-- ── Main Content ── -->
+    <div class="main-content">
+
+        <!-- Header -->
+        <div class="page-header">
+            <div>
+                <h1><i class="fas fa-star" style="color: var(--primary); margin-right: 10px;"></i>My Watchlist</h1>
+                <div class="header-stats" style="margin-top: 5px;">
+                    Tracking <span id="watchlist-count">0</span> stocks
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span id="last-updated" style="color: var(--text-secondary); font-size: 12px;">—</span>
+                <button class="btn-refresh" onclick="forceRefresh()" id="refresh-btn">
+                    <i class="fas fa-sync-alt" id="refresh-icon"></i> Refresh
+                </button>
+            </div>
+        </div>
+
+        <!-- Add Stock Section -->
+        <div class="add-stock-section">
+            <input 
+                type="text" 
+                id="add-stock-input" 
+                placeholder="Enter stock symbol (e.g., AAPL, GOOGL, TSLA)..."
+                onkeypress="if(event.key==='Enter') addToWatchlist()"
+            >
+            <button class="btn-add" onclick="addToWatchlist()" id="add-btn">
+                <i class="fas fa-plus"></i> Add to Watchlist
+            </button>
+        </div>
+
+        <!-- Watchlist Table -->
+        <div class="section-card">
+            <div class="section-header">
+                <span class="section-title"><i class="fas fa-list" style="color: var(--primary); margin-right: 8px;"></i>Tracked Stocks</span>
+            </div>
+            <div style="overflow-x: auto;">
+                <table class="watchlist-table">
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Company</th>
+                            <th>Price</th>
+                            <th>Change</th>
+                            <th>Change %</th>
+                            <th>Volume</th>
+                            <th>Market Cap</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="watchlist-body">
+                        <tr><td colspan="8">
+                            <div class="empty-state">
+                                <i class="fas fa-star"></i>
+                                <p>Loading watchlist...</p>
+                            </div>
+                        </td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+    // ── Config ──
+    const supabaseUrl = 'https://nlcdgfpnreyjoomctoht.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5sY2RnZnBucmV5am9vbWN0b2h0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk2NzM2NTMsImV4cCI6MjA1NTI0OTY1M30.sb_publishable_8OPX1CdBvxjjGkJbf5nRPA_oz0iSd_p';
+
+    let supabase = null;
+    let currentUser = null;
+    let watchlistStocks = [];
+    let autoRefreshInterval = null;
+    let lastUpdatedTime = null;
+
+    // ── Init ──
+    function initSupabase() {
+        if (typeof window.supabase !== 'undefined') {
+            supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+            return true;
+        }
+        return false;
+    }
+
+    // ── Toast ──
+    function showToast(title, message, type = 'info') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        const icons = { success: '✓', error: '✕' };
+        toast.innerHTML = `
+            <div class="toast-icon">${icons[type]}</div>
+            <div class="toast-content">
+                <div class="toast-title">${title}</div>
+                <div class="toast-message">${message}</div>
+            </div>
+        `;
+        container.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
+
+    // ── Fetch Stock from Yahoo Finance ──
+    async function fetchStockData(symbol) {
+        try {
+            const yahooSymbol = symbol.replace('.', '-');
+            const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=1d`;
+            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`;
+
+            const response = await fetch(proxyUrl);
+            if (!response.ok) throw new Error('Failed to fetch');
+
+            const data = await response.json();
+            if (!data.chart?.result?.length) throw new Error('No data');
+
+            const result = data.chart.result[0];
+            const meta = result.meta;
+            const quote = result.indicators?.quote?.[0];
+
+            return {
+                symbol: symbol,
+                name: meta.longName || meta.shortName || symbol,
+                current_price: meta.regularMarketPrice || 0,
+                change: (meta.regularMarketPrice || 0) - (meta.previousClose || 0),
+                change_percent: ((meta.regularMarketPrice || 0) - (meta.previousClose || 0)) / (meta.previousClose || 1) * 100,
+                volume: meta.regularMarketVolume || 0,
+                market_cap: meta.marketCap || 0
+            };
+        } catch (error) {
+            console.error(`Error fetching ${symbol}:`, error);
+            return null;
+        }
+    }
+
+    // ── Load Watchlist from Supabase ──
+    async function loadWatchlist() {
+        if (!supabase || !currentUser) {
+            document.getElementById('watchlist-body').innerHTML = `
+                <tr><td colspan="8">
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <p>Not connected to database</p>
+                    </div>
+                </td></tr>`;
+            return;
+        }
+
+        try {
+            const { data: watchlist, error } = await supabase
+                .from('watchlist')
+                .select('*')
+                .eq('user_id', currentUser.id)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            if (!watchlist || watchlist.length === 0) {
+                displayEmptyState();
+                return;
+            }
+
+            // Fetch live prices for all watchlist stocks
+            const stockPromises = watchlist.map(item => fetchStockData(item.stock_symbol));
+            const results = await Promise.allSettled(stockPromises);
+
+            watchlistStocks = results
+                .filter(result => result.status === 'fulfilled' && result.value !== null)
+                .map(result => result.value);
+
+            displayWatchlist(watchlistStocks);
+            document.getElementById('watchlist-count').textContent = watchlistStocks.length;
+
+        } catch (error) {
+            console.error('Error loading watchlist:', error);
+            showToast('Error', 'Failed to load watchlist', 'error');
+        }
+    }
+
+    // ── Display Watchlist ──
+    function displayWatchlist(stocks) {
+        const tbody = document.getElementById('watchlist-body');
+
+        if (!stocks || stocks.length === 0) {
+            displayEmptyState();
+            return;
+        }
+
+        let html = '';
+        stocks.forEach(stock => {
+            const changeClass = stock.change >= 0 ? 'positive' : 'negative';
+            const changeSign = stock.change >= 0 ? '+' : '';
+            
+            html += `
+                <tr onclick="window.location.href='browse-market.html'">
+                    <td><span class="stock-symbol">${stock.symbol}</span></td>
+                    <td><span class="stock-name">${stock.name}</span></td>
+                    <td style="font-weight: 600;">$${stock.current_price.toFixed(2)}</td>
+                    <td class="${changeClass}">${changeSign}$${stock.change.toFixed(2)}</td>
+                    <td class="${changeClass}">${changeSign}${stock.change_percent.toFixed(2)}%</td>
+                    <td>${formatNumber(stock.volume)}</td>
+                    <td>${stock.market_cap > 0 ? '$' + formatMarketCap(stock.market_cap) : 'N/A'}</td>
+                    <td onclick="event.stopPropagation();" style="display: flex; gap: 8px;">
+                        <button class="btn-trade" onclick="window.location.href='browse-market.html'">Trade</button>
+                        <button class="btn-remove" onclick="removeFromWatchlist('${stock.symbol}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+
+        tbody.innerHTML = html;
+    }
+
+    function displayEmptyState() {
+        document.getElementById('watchlist-body').innerHTML = `
+            <tr><td colspan="8">
+                <div class="empty-state">
+                    <i class="fas fa-star"></i>
+                    <p>Your watchlist is empty</p>
+                    <small>Add stocks above to start tracking them</small>
+                </div>
+            </td></tr>`;
+        document.getElementById('watchlist-count').textContent = '0';
+    }
+
+    // ── Add to Watchlist ──
+    async function addToWatchlist() {
+        const input = document.getElementById('add-stock-input');
+        const symbol = input.value.trim().toUpperCase();
+
+        if (!symbol) {
+            showToast('Error', 'Please enter a stock symbol', 'error');
+            return;
+        }
+
+        if (!supabase || !currentUser) {
+            showToast('Error', 'Not connected to database', 'error');
+            return;
+        }
+
+        const btn = document.getElementById('add-btn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
+
+        try {
+            // Check if stock exists
+            const stockData = await fetchStockData(symbol);
+            if (!stockData) {
+                showToast('Not Found', `Stock "${symbol}" not found`, 'error');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-plus"></i> Add to Watchlist';
+                return;
+            }
+
+            // Check if already in watchlist
+            const { data: existing } = await supabase
+                .from('watchlist')
+                .select('*')
+                .eq('user_id', currentUser.id)
+                .eq('stock_symbol', symbol)
+                .maybeSingle();
+
+            if (existing) {
+                showToast('Already Added', `${symbol} is already in your watchlist`, 'error');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-plus"></i> Add to Watchlist';
+                return;
+            }
+
+            // Add to watchlist
+            const { error } = await supabase
+                .from('watchlist')
+                .insert({
+                    user_id: currentUser.id,
+                    stock_symbol: symbol
+                });
+
+            if (error) throw error;
+
+            showToast('Added!', `${symbol} added to watchlist`, 'success');
+            input.value = '';
+            await loadWatchlist();
+
+        } catch (error) {
+            console.error('Error adding to watchlist:', error);
+            showToast('Error', 'Failed to add stock', 'error');
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-plus"></i> Add to Watchlist';
+    }
+
+    // ── Remove from Watchlist ──
+    async function removeFromWatchlist(symbol) {
+        if (!confirm(`Remove ${symbol} from watchlist?`)) return;
+
+        try {
+            const { error } = await supabase
+                .from('watchlist')
+                .delete()
+                .eq('user_id', currentUser.id)
+                .eq('stock_symbol', symbol);
+
+            if (error) throw error;
+
+            showToast('Removed', `${symbol} removed from watchlist`, 'success');
+            await loadWatchlist();
+
+        } catch (error) {
+            console.error('Error removing from watchlist:', error);
+            showToast('Error', 'Failed to remove stock', 'error');
+        }
+    }
+
+    // ── Format Numbers ──
+    function formatNumber(num) {
+        if (num >= 1e9) return (num / 1e9).toFixed(2) + 'B';
+        if (num >= 1e6) return (num / 1e6).toFixed(2) + 'M';
+        if (num >= 1e3) return (num / 1e3).toFixed(2) + 'K';
+        return num.toLocaleString();
+    }
+
+    function formatMarketCap(cap) {
+        if (cap >= 1e12) return (cap / 1e12).toFixed(2) + 'T';
+        if (cap >= 1e9) return (cap / 1e9).toFixed(2) + 'B';
+        if (cap >= 1e6) return (cap / 1e6).toFixed(2) + 'M';
+        return cap.toLocaleString();
+    }
+
+    // ── Auto-refresh ──
+    function updateLastUpdatedText() {
+        if (!lastUpdatedTime) return;
+        const seconds = Math.floor((Date.now() - lastUpdatedTime) / 1000);
+        document.getElementById('last-updated').textContent = `Updated ${seconds}s ago`;
+    }
+
+    async function silentRefresh() {
+        try {
+            await loadWatchlist();
+            lastUpdatedTime = Date.now();
+            updateLastUpdatedText();
+            console.log('🔄 Watchlist auto-refreshed');
+        } catch (e) {
+            console.warn('Auto-refresh failed:', e.message);
+        }
+    }
+
+    async function forceRefresh() {
+        const icon = document.getElementById('refresh-icon');
+        const btn = document.getElementById('refresh-btn');
+        icon.style.animation = 'spin 0.8s linear infinite';
+        btn.disabled = true;
+        await silentRefresh();
+        icon.style.animation = '';
+        btn.disabled = false;
+    }
+
+    function startAutoRefresh() {
+        if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+        autoRefreshInterval = setInterval(silentRefresh, 60000);
+        setInterval(updateLastUpdatedText, 5000);
+        console.log('⏱️ Watchlist auto-refresh started (every 60s)');
+    }
+
+    // ── Logout ──
+    async function logout() {
+        if (supabase) await supabase.auth.signOut();
+        window.location.href = 'index.html';
+    }
+
+    // ── Boot ──
+    window.onload = async function () {
+        const ready = () => new Promise(resolve => {
+            if (initSupabase()) return resolve();
+            let attempts = 0;
+            const interval = setInterval(() => {
+                attempts++;
+                if (initSupabase() || attempts > 20) {
+                    clearInterval(interval);
+                    resolve();
+                }
+            }, 100);
+        });
+
+        await ready();
+        
+        if (supabase) {
+            const { data: { user } } = await supabase.auth.getUser();
+            currentUser = user;
+        }
+
+        await loadWatchlist();
+        lastUpdatedTime = Date.now();
+        updateLastUpdatedText();
+        startAutoRefresh();
+    };
+</script>
+</body>
+</html>
