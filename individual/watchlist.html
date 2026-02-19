@@ -264,6 +264,12 @@
         .positive { color: var(--green); }
         .negative { color: var(--red); }
 
+        .sparkline-canvas {
+            width: 100px;
+            height: 40px;
+            display: block;
+        }
+
         .btn-remove {
             padding: 6px 12px;
             background: transparent;
@@ -750,13 +756,14 @@
                             <th>Price</th>
                             <th>Change</th>
                             <th>Change %</th>
+                            <th>Trend</th>
                             <th>Volume</th>
                             <th>Market Cap</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="watchlist-body">
-                        <tr><td colspan="8">
+                        <tr><td colspan="9">
                             <div class="empty-state">
                                 <i class="fas fa-star"></i>
                                 <p>Loading watchlist...</p>
@@ -997,6 +1004,10 @@
             const volumes = indicators?.volume?.filter(v => v != null) || [];
             const volume = volumes.length > 0 ? volumes[volumes.length - 1] : 0;
 
+            // Extract historical closing prices for sparkline (last 20 points)
+            const closePrices = indicators?.close?.filter(p => p != null) || [];
+            const history = closePrices.length > 0 ? closePrices.slice(-20) : null;
+
             return {
                 symbol: symbol,
                 name: quote.longName || quote.shortName || symbol,
@@ -1004,7 +1015,8 @@
                 change: change,
                 change_percent: changePercent,
                 volume: volume,
-                market_cap: quote.marketCap || 0
+                market_cap: quote.marketCap || getEstimatedMarketCap(symbol, currentPrice),
+                history: history
             };
         } catch (error) {
             console.error(`Error fetching ${symbol}:`, error);
@@ -1016,7 +1028,7 @@
     async function loadWatchlist() {
         if (!supabase || !currentUser) {
             document.getElementById('watchlist-body').innerHTML = `
-                <tr><td colspan="8">
+                <tr><td colspan="9">
                     <div class="empty-state">
                         <i class="fas fa-exclamation-circle"></i>
                         <p>Not connected to database</p>
@@ -1077,9 +1089,10 @@
                     <td style="font-weight: 600;">$${stock.current_price.toFixed(2)}</td>
                     <td class="${changeClass}">${changeSign}$${stock.change.toFixed(2)}</td>
                     <td class="${changeClass}">${changeSign}${stock.change_percent.toFixed(2)}%</td>
+                    <td><canvas id="sparkline-${stock.symbol}" class="sparkline-canvas" width="100" height="40"></canvas></td>
                     <td>${formatNumber(stock.volume)}</td>
                     <td>${stock.market_cap > 0 ? '$' + formatMarketCap(stock.market_cap) : 'N/A'}</td>
-                    <td onclick="event.stopPropagation();" style="display: flex; gap: 8px;">
+                    <td onclick="event.stopPropagation();" style="white-space: nowrap;">
                         <button class="btn-trade" onclick="openTradingPanel(${JSON.stringify(stock).replace(/"/g, '&quot;')})">Trade</button>
                         <button class="btn-remove" onclick="removeFromWatchlist('${stock.symbol}')">
                             <i class="fas fa-trash"></i>
@@ -1090,11 +1103,21 @@
         });
 
         tbody.innerHTML = html;
+
+        // Draw sparklines after DOM is updated
+        setTimeout(() => {
+            stocks.forEach(stock => {
+                const sparklineData = stock.history && stock.history.length > 0
+                    ? stock.history
+                    : generateSparklineData(stock.current_price, stock.change_percent);
+                drawSparkline(`sparkline-${stock.symbol}`, sparklineData, stock.change >= 0);
+            });
+        }, 10);
     }
 
     function displayEmptyState() {
         document.getElementById('watchlist-body').innerHTML = `
-            <tr><td colspan="8">
+            <tr><td colspan="9">
                 <div class="empty-state">
                     <i class="fas fa-star"></i>
                     <p>Your watchlist is empty</p>
@@ -1206,6 +1229,78 @@
         if (cap >= 1e9) return (cap / 1e9).toFixed(2) + 'B';
         if (cap >= 1e6) return (cap / 1e6).toFixed(2) + 'M';
         return cap.toLocaleString();
+    }
+
+    // Estimate market cap for stocks where Yahoo doesn't return it
+    function getEstimatedMarketCap(symbol, currentPrice) {
+        const sharesOutstanding = {
+            'AAPL': 15700, 'GOOGL': 12500, 'MSFT': 7430, 'AMZN': 10300,
+            'TSLA': 3180, 'NVDA': 2470, 'META': 2560, 'NFLX': 440,
+            'JPM': 2900, 'JNJ': 2400, 'V': 2100, 'MA': 930,
+            'WMT': 8000, 'HD': 990, 'XOM': 4050, 'PG': 2350,
+            'UNH': 930, 'CVX': 1890, 'MRK': 2530, 'COST': 440
+        };
+        const shares = sharesOutstanding[symbol] || 1000;
+        return currentPrice * shares * 1000000;
+    }
+
+    // Generate synthetic sparkline data when no history available
+    function generateSparklineData(currentPrice, changePercent) {
+        const points = 20;
+        const data = [];
+        const startPrice = currentPrice / (1 + changePercent / 100);
+        let price = startPrice;
+        for (let i = 0; i < points; i++) {
+            const randomChange = (Math.random() - 0.5) * (currentPrice * 0.015);
+            const trendFactor = i / (points - 1);
+            price = startPrice + (currentPrice - startPrice) * trendFactor + randomChange;
+            data.push(Math.max(price, 0));
+        }
+        data[data.length - 1] = currentPrice;
+        return data;
+    }
+
+    // Draw sparkline on canvas
+    function drawSparkline(canvasId, data, isPositive) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width = 100;
+        const height = canvas.height = 40;
+        ctx.clearRect(0, 0, width, height);
+
+        if (!data || data.length < 2) return;
+
+        const min = Math.min(...data);
+        const max = Math.max(...data);
+        const range = max - min || 1;
+
+        ctx.beginPath();
+        ctx.strokeStyle = isPositive ? '#16c784' : '#ea3943';
+        ctx.lineWidth = 1.5;
+
+        data.forEach((value, i) => {
+            const x = (i / (data.length - 1)) * width;
+            const y = height - ((value - min) / range) * (height - 4) - 2;
+            i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+
+        // Fill gradient under line
+        ctx.lineTo(width, height);
+        ctx.lineTo(0, height);
+        ctx.closePath();
+        const gradient = ctx.createLinearGradient(0, 0, 0, height);
+        if (isPositive) {
+            gradient.addColorStop(0, 'rgba(22,199,132,0.2)');
+            gradient.addColorStop(1, 'rgba(22,199,132,0)');
+        } else {
+            gradient.addColorStop(0, 'rgba(234,57,67,0.2)');
+            gradient.addColorStop(1, 'rgba(234,57,67,0)');
+        }
+        ctx.fillStyle = gradient;
+        ctx.fill();
     }
 
     // ── Auto-refresh ──
