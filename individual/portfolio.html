@@ -1287,7 +1287,7 @@
         try {
             await loadUserDataFromSupabase();
             await displayPortfolio();
-            await savePortfolioSnapshot(); // Update snapshot with latest prices
+            await savePortfolioSnapshot();
             await updateAdvancedMetrics();
             await renderCharts();
             lastUpdatedTime = Date.now();
@@ -1740,22 +1740,6 @@
             }
         });
     }
-                scales: {
-                    y: {
-                        ticks: { 
-                            color: '#a0a0a0',
-                            callback: (value) => `$${value.toLocaleString()}`
-                        },
-                        grid: { color: '#2c2c2c' }
-                    },
-                    x: {
-                        ticks: { color: '#a0a0a0' },
-                        grid: { color: '#2c2c2c' }
-                    }
-                }
-            }
-        });
-    }
 
     function renderSectorChart() {
         const ctx = document.getElementById('sectorChart');
@@ -1896,7 +1880,7 @@
         await ready();
         await loadUserDataFromSupabase();
         await displayPortfolio();
-        await savePortfolioSnapshot(); // Save today's snapshot
+        await savePortfolioSnapshot();
         await updateAdvancedMetrics();
         await renderCharts();
         lastUpdatedTime = Date.now();
