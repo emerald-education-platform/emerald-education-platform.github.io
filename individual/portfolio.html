@@ -1615,7 +1615,10 @@
                     data.push(STARTING_BALANCE);
 
                     snapshots.forEach(snapshot => {
-                        const date = new Date(snapshot.snapshot_date);
+                        // Parse date parts directly to avoid UTC→local timezone shift
+                        // (new Date('2026-02-19') is UTC midnight, which becomes Feb 18 in US timezones)
+                        const [year, month, day] = snapshot.snapshot_date.split('-').map(Number);
+                        const date = new Date(year, month - 1, day); // local time, no offset
                         const label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                         labels.push(label);
                         data.push(parseFloat(snapshot.total_value));
