@@ -489,7 +489,7 @@
 <script>
     // ── Config ──
     const supabaseUrl = 'https://nlcdgfpnreyjoomctoht.supabase.co';
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5sY2RnZnBucmV5am9vbWN0b2h0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk2NzM2NTMsImV4cCI6MjA1NTI0OTY1M30.sb_publishable_8OPX1CdBvxjjGkJbf5nRPA_oz0iSd_p';
+    const supabaseKey = 'sb_publishable_8OPX1CdBvxjjGkJbf5nRPA_oz0iSd_p';
 
     let supabase = null;
     let currentUser = null;
@@ -504,6 +504,65 @@
             return true;
         }
         return false;
+    }
+
+    // ── Auto-login Demo User ──
+    async function getOrCreateDemoUser() {
+        try {
+            const demoEmail = 'demo@emeraldexchange.com';
+            const demoPassword = 'demo123456';
+            
+            // Check if already signed in
+            const { data: { user: existingUser } } = await supabase.auth.getUser();
+            if (existingUser) {
+                console.log('Already signed in:', existingUser.email);
+                return existingUser;
+            }
+            
+            // Try to sign in
+            let { data, error } = await supabase.auth.signInWithPassword({
+                email: demoEmail,
+                password: demoPassword
+            });
+            
+            if (error && error.message.includes('Invalid login credentials')) {
+                // Demo user doesn't exist, create it
+                console.log('Creating demo user...');
+                const signUpResult = await supabase.auth.signUp({
+                    email: demoEmail,
+                    password: demoPassword,
+                    options: {
+                        data: {
+                            username: 'Demo User'
+                        }
+                    }
+                });
+                
+                if (signUpResult.error) {
+                    console.error('Error creating demo user:', signUpResult.error);
+                    return null;
+                }
+                
+                data = signUpResult.data;
+                
+                // Create user profile
+                if (data.user) {
+                    await supabase.from('user_profiles').insert({
+                        id: data.user.id,
+                        username: 'Demo User',
+                        email: demoEmail,
+                        cash_balance: 10000.00
+                    });
+                    console.log('✅ Demo user created successfully');
+                }
+            }
+            
+            return data?.user || null;
+            
+        } catch (error) {
+            console.error('Error with demo user:', error);
+            return null;
+        }
     }
 
     // ── Toast ──
@@ -808,9 +867,15 @@
 
         await ready();
         
+        // Auto-login demo user
         if (supabase) {
-            const { data: { user } } = await supabase.auth.getUser();
-            currentUser = user;
+            currentUser = await getOrCreateDemoUser();
+            if (!currentUser) {
+                console.error('Failed to authenticate');
+                displayEmptyState();
+                return;
+            }
+            console.log('✅ Authenticated as:', currentUser.email);
         }
 
         await loadWatchlist();
