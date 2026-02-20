@@ -1361,7 +1361,9 @@
 
         try {
             const totalValue = userCash + getTotalPortfolioValue();
-            const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+            // Use local date — toISOString() is UTC and rolls over to tomorrow after ~4pm PST
+            const _ld1 = new Date();
+            const today = `${_ld1.getFullYear()}-${String(_ld1.getMonth()+1).padStart(2,'0')}-${String(_ld1.getDate()).padStart(2,'0')}`;
 
             // Check if we already have a snapshot for today
             const { data: existing } = await supabase
@@ -1659,7 +1661,9 @@
                     // Add current value if it's different from last snapshot
                     const currentValue = userCash + getTotalPortfolioValue();
                     const lastSnapshot = snapshots[snapshots.length - 1];
-                    const today = new Date().toISOString().split('T')[0];
+                    // Use local date for comparison (not UTC)
+                    const _ld2 = new Date();
+                    const today = `${_ld2.getFullYear()}-${String(_ld2.getMonth()+1).padStart(2,'0')}-${String(_ld2.getDate()).padStart(2,'0')}`;
                     
                     if (lastSnapshot.snapshot_date !== today) {
                         labels.push('Now');
@@ -1916,12 +1920,22 @@
         await loadUserDataFromSupabase();
         await displayPortfolio();
 
-        // If coming from a portfolio reset, skip saving a stale snapshot and show a banner
+        // If coming from a portfolio reset, clear all UI immediately before any async fetch
         const wasReset = new URLSearchParams(window.location.search).get('reset') === '1';
         if (wasReset) {
-            // Remove ?reset=1 from URL cleanly
             history.replaceState({}, '', 'portfolio.html');
+
+            // Wipe recent-activity card synchronously so there's no flash of old data
+            const activityEl = document.getElementById('recent-activity');
+            if (activityEl) activityEl.innerHTML = '<div style="color:var(--text-secondary);padding:15px;">No recent trades yet.</div>';
+
+            // Destroy charts so renderCharts() re-draws from fresh (empty) Supabase data
+            if (typeof valueChart !== 'undefined' && valueChart) { valueChart.destroy(); valueChart = null; }
+            if (typeof sectorChart !== 'undefined' && sectorChart) { sectorChart.destroy(); sectorChart = null; }
+            if (typeof performanceChart !== 'undefined' && performanceChart) { performanceChart.destroy(); performanceChart = null; }
+
             showToast('Portfolio Reset Complete', 'Your portfolio has been reset to $10,000. Fresh start!', 'success', 6000);
+            // Don't save a snapshot — the data was just wiped
         } else {
             await savePortfolioSnapshot();
         }
