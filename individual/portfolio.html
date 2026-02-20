@@ -580,7 +580,22 @@
             .charts-grid { grid-template-columns: 1fr; }
             .trading-panel { width: 100%; }
         }
+        /* ── Light Theme ── */
+        :root[data-theme="light"] {
+            --dark-bg: #f0f2f5;
+            --card-bg: #ffffff;
+            --sidebar-bg: #ffffff;
+            --text-primary: #111827;
+            --text-secondary: #6b7280;
+            --border-dark: #e5e7eb;
+            --hover-bg: #f3f4f6;
+            --table-header-bg: #f9fafb;
+            --shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        body { transition: background 0.25s, color 0.25s; }
+        .sidebar, .section-card, .summary-card { transition: background 0.25s, border-color 0.25s; }
     </style>
+    <script>(function(){ const t=localStorage.getItem('ese_theme'); if(t) document.documentElement.setAttribute('data-theme',t); })();</script>
 </head>
 <body>
 <div class="dashboard-container">
@@ -806,7 +821,17 @@
     // ── Config ──
     const supabaseUrl = 'https://nlcdgfpnreyjoomctoht.supabase.co';
     const supabaseKey = 'sb_publishable_8OPX1CdBvxjjGkJbf5nRPA_oz0iSd_p';
-    const STARTING_BALANCE = 10000.00;
+    const STARTING_BALANCE = 10000.00; // fallback only — always call getStartingBalance() for dynamic value
+
+    function fmtMoney(n) {
+        return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // Read user-configured starting balance from localStorage (set in account.html preferences)
+    function getStartingBalance() {
+        const v = parseFloat(localStorage.getItem('ese_start_balance'));
+        return (!isNaN(v) && v >= 1000 && v <= 1000000) ? v : STARTING_BALANCE;
+    }
     const ALLOCATION_COLORS = [
         '#10b981','#3b82f6','#f59e0b','#ef4444','#8b5cf6',
         '#06b6d4','#84cc16','#f97316','#ec4899','#14b8a6'
@@ -1084,8 +1109,9 @@
     // ── Summary Cards ──
     function updateSummaryCards(totalCost, totalValue) {
         const totalBalance  = userCash + totalValue;
-        const overallGL     = totalBalance - STARTING_BALANCE;
-        const overallGLPct  = (overallGL / STARTING_BALANCE) * 100;
+        const startBal      = getStartingBalance();
+        const overallGL     = totalBalance - startBal;
+        const overallGLPct  = (overallGL / startBal) * 100;
         const investedGL    = totalValue - totalCost;
         const investedGLPct = totalCost > 0 ? (investedGL / totalCost) * 100 : 0;
 
@@ -1646,7 +1672,7 @@
                     console.log(`Building chart from ${snapshots.length} daily snapshots`);
                     
                     labels.push('Start');
-                    data.push(STARTING_BALANCE);
+                    data.push(getStartingBalance());
 
                     snapshots.forEach(snapshot => {
                         // Parse date parts directly to avoid UTC→local timezone shift
@@ -1685,7 +1711,7 @@
                         const stockPrices = {};
 
                         labels.push('Start');
-                        data.push(STARTING_BALANCE);
+                        data.push(getStartingBalance());
 
                         transactions.forEach((t, index) => {
                             const amount = parseFloat(t.total_amount);
@@ -1734,7 +1760,7 @@
         if (data.length === 0) {
             const currentValue = userCash + getTotalPortfolioValue();
             labels = ['Start', 'Now'];
-            data = [STARTING_BALANCE, currentValue];
+            data = [getStartingBalance(), currentValue];
         }
 
         if (valueChart) valueChart.destroy();
@@ -1934,7 +1960,7 @@
             if (typeof sectorChart !== 'undefined' && sectorChart) { sectorChart.destroy(); sectorChart = null; }
             if (typeof performanceChart !== 'undefined' && performanceChart) { performanceChart.destroy(); performanceChart = null; }
 
-            showToast('Portfolio Reset Complete', 'Your portfolio has been reset to $10,000. Fresh start!', 'success', 6000);
+            showToast('Portfolio Reset Complete', `Your portfolio has been reset to ${fmtMoney(getStartingBalance())}. Fresh start!`, 'success', 6000);
             // Don't save a snapshot — the data was just wiped
         } else {
             await savePortfolioSnapshot();
@@ -1973,15 +1999,21 @@
         let warnTimer, logoutTimer, countdownInterval;
         let warningVisible = false;
 
+        function isEnabled() {
+            return localStorage.getItem('ese_inactivity') !== 'off' && !window._inactivityDisabled;
+        }
+
         function resetTimers() {
             clearTimeout(warnTimer);
             clearTimeout(logoutTimer);
             if (warningVisible) hideWarning();
+            if (!isEnabled()) return;
             warnTimer   = setTimeout(showWarning,  WARN_MS);
             logoutTimer = setTimeout(autoLogout,   LOGOUT_MS);
         }
 
         function showWarning() {
+            if (!isEnabled()) return;
             warningVisible = true;
             const overlay = document.getElementById('inactivity-overlay');
             if (overlay) overlay.style.display = 'flex';
@@ -2016,10 +2048,11 @@
         window.doInactivityLogout   = autoLogout;
 
         ['mousemove','mousedown','keydown','touchstart','scroll','click'].forEach(evt =>
-            document.addEventListener(evt, resetTimers, { passive: true })
+            document.addEventListener(evt, () => { if (isEnabled()) resetTimers(); }, { passive: true })
         );
 
-        resetTimers();
+        window.resetInactivityTimer = function() { window._inactivityDisabled = false; resetTimers(); };
+        if (isEnabled()) resetTimers();
     })();
 
 </script>
