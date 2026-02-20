@@ -842,12 +842,85 @@
 
         await loadTransactions();
     };
+    // ── Sidebar Profile Loader ──
+    function updateSidebarProfile(user) {
+        if (!user) return;
+        const name      = user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || 'Trader';
+        const avatarUrl = user.user_metadata?.avatar_url || null;
+        const usernameEl = document.getElementById('sidebar-username');
+        const avatarEl   = document.getElementById('sidebar-avatar');
+        if (usernameEl) usernameEl.textContent = name;
+        if (avatarEl) {
+            if (avatarUrl) {
+                avatarEl.innerHTML = '<img src="' + avatarUrl + '" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">';
+            } else {
+                avatarEl.innerHTML = '<span style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;">' + name.charAt(0).toUpperCase() + '</span>';
+            }
+        }
+    }
+
+    // ── Inactivity Timeout ──
+    (function() {
+        const WARN_MS   = 20 * 60 * 1000;
+        const LOGOUT_MS = 30 * 60 * 1000;
+        let warnTimer, logoutTimer, countdownInterval;
+        let warningVisible = false;
+
+        function resetTimers() {
+            clearTimeout(warnTimer);
+            clearTimeout(logoutTimer);
+            if (warningVisible) hideWarning();
+            warnTimer   = setTimeout(showWarning,  WARN_MS);
+            logoutTimer = setTimeout(autoLogout,   LOGOUT_MS);
+        }
+
+        function showWarning() {
+            warningVisible = true;
+            const overlay = document.getElementById('inactivity-overlay');
+            if (overlay) overlay.style.display = 'flex';
+            let remaining = 10 * 60;
+            const el = document.getElementById('inactivity-countdown');
+            clearInterval(countdownInterval);
+            countdownInterval = setInterval(() => {
+                remaining--;
+                const m = Math.floor(remaining / 60);
+                const s = remaining % 60;
+                if (el) el.textContent = m + ':' + s.toString().padStart(2, '0');
+                if (remaining <= 0) clearInterval(countdownInterval);
+            }, 1000);
+        }
+
+        function hideWarning() {
+            warningVisible = false;
+            clearInterval(countdownInterval);
+            const overlay = document.getElementById('inactivity-overlay');
+            if (overlay) overlay.style.display = 'none';
+        }
+
+        async function autoLogout() {
+            hideWarning();
+            if (typeof supabase !== 'undefined' && supabase) {
+                try { await supabase.auth.signOut(); } catch(e) {}
+            }
+            window.location.href = 'index.html';
+        }
+
+        window.resetInactivityTimer = function() { resetTimers(); };
+        window.doInactivityLogout   = autoLogout;
+
+        ['mousemove','mousedown','keydown','touchstart','scroll','click'].forEach(evt =>
+            document.addEventListener(evt, resetTimers, { passive: true })
+        );
+
+        resetTimers();
+    })();
+
 </script>
 
     <!-- Inactivity Warning Overlay -->
     <div id="inactivity-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:99999;align-items:center;justify-content:center;">
         <div style="background:#1e1e1e;border:1px solid #2c2c2c;border-radius:16px;padding:40px;max-width:400px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.8);">
-            <div style="font-size:48px;margin-bottom:16px;">&#9203;</div>
+            <div style="margin-bottom:16px;"><i class="fas fa-clock" style="font-size:48px;color:#10b981;"></i></div>
             <h2 style="color:#e0e0e0;margin-bottom:8px;">Still there?</h2>
             <p style="color:#a0a0a0;margin-bottom:6px;">You've been inactive for 20 minutes.</p>
             <p style="color:#a0a0a0;margin-bottom:24px;">You'll be automatically signed out in <strong style="color:#10b981;" id="inactivity-countdown">10:00</strong>.</p>
