@@ -102,11 +102,36 @@
             color: var(--text-primary);
         }
         
+
+        /* Profile button at sidebar bottom */
         .sidebar-footer {
             margin-top: auto;
-            padding-top: 20px;
+            padding-top: 16px;
             border-top: 1px solid var(--border-dark);
         }
+        .sidebar-profile {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 12px; border-radius: 10px;
+            cursor: pointer; transition: background 0.2s;
+            text-decoration: none;
+            border: 1px solid transparent;
+        }
+        .sidebar-profile:hover { background: var(--hover-bg); border-color: var(--border-dark); }
+        .sidebar-avatar {
+            width: 36px; height: 36px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), #0ea5e9);
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden; flex-shrink: 0;
+            font-weight: 700; font-size: 14px; color: white;
+            border: 2px solid var(--border-dark);
+        }
+        .sidebar-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+        .sidebar-user-info { overflow: hidden; flex: 1; }
+        .sidebar-username {
+            font-size: 13px; font-weight: 600; color: var(--text-primary);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .sidebar-user-sub { font-size: 11px; color: var(--text-secondary); margin-top: 1px; }
         
         /* Main Content */
         .main-content { 
@@ -786,8 +811,14 @@
             </a>
 
             <div class="sidebar-footer">
-                <a href="#" class="nav-item" onclick="logout()">
-                    <i class="fas fa-sign-out-alt"></i> Logout
+                <a href="account.html" class="sidebar-profile" id="sidebar-profile-btn">
+                    <div class="sidebar-avatar" id="sidebar-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="sidebar-user-info">
+                        <div class="sidebar-username" id="sidebar-username">My Account</div>
+                        <div class="sidebar-user-sub">Account Settings</div>
+                    </div>
                 </a>
             </div>
         </div>
@@ -2294,6 +2325,7 @@
                 
                 if (user) {
                     currentUser = user;
+                    updateSidebarProfile(user);
                     console.log('✅ Using Supabase mode with user:', user.email);
                     
                     // Load user data from Supabase
@@ -2791,6 +2823,96 @@
                 }
             }
         };
+
+    // ── Inactivity Timeout ──
+    (function() {
+        const WARN_MS   = 20 * 60 * 1000;
+        const LOGOUT_MS = 30 * 60 * 1000;
+        let warnTimer, logoutTimer, countdownInterval;
+        let warningVisible = false;
+
+        function resetTimers() {
+            clearTimeout(warnTimer);
+            clearTimeout(logoutTimer);
+            if (warningVisible) hideWarning();
+            warnTimer   = setTimeout(showWarning,  WARN_MS);
+            logoutTimer = setTimeout(autoLogout,   LOGOUT_MS);
+        }
+
+        function showWarning() {
+            warningVisible = true;
+            const overlay = document.getElementById('inactivity-overlay');
+            overlay.style.display = 'flex';
+            let remaining = 10 * 60;
+            const el = document.getElementById('inactivity-countdown');
+            clearInterval(countdownInterval);
+            countdownInterval = setInterval(() => {
+                remaining--;
+                const m = Math.floor(remaining / 60);
+                const s = remaining % 60;
+                if (el) el.textContent = m + ':' + s.toString().padStart(2, '0');
+                if (remaining <= 0) clearInterval(countdownInterval);
+            }, 1000);
+        }
+
+        function hideWarning() {
+            warningVisible = false;
+            clearInterval(countdownInterval);
+            document.getElementById('inactivity-overlay').style.display = 'none';
+        }
+
+        async function autoLogout() {
+            hideWarning();
+            if (typeof supabase !== 'undefined' && supabase) {
+                try { await supabase.auth.signOut(); } catch(e) {}
+            }
+            window.location.href = 'index.html';
+        }
+
+        window.resetInactivityTimer = function() { resetTimers(); };
+        window.doInactivityLogout   = autoLogout;
+
+        ['mousemove','mousedown','keydown','touchstart','scroll','click'].forEach(evt =>
+            document.addEventListener(evt, resetTimers, { passive: true })
+        );
+
+        resetTimers();
+    })();
+
+    // ── Sidebar Profile Loader ──
+    function updateSidebarProfile(user) {
+        if (!user) return;
+        const name      = user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || 'Trader';
+        const avatarUrl = user.user_metadata?.avatar_url || null;
+        const usernameEl = document.getElementById('sidebar-username');
+        const avatarEl   = document.getElementById('sidebar-avatar');
+        if (usernameEl) usernameEl.textContent = name;
+        if (avatarEl) {
+            if (avatarUrl) {
+                avatarEl.innerHTML = '<img src="' + avatarUrl + '" alt="Avatar">';
+            } else {
+                avatarEl.innerHTML = '<span>' + name.charAt(0).toUpperCase() + '</span>';
+            }
+        }
+    }
     </script>
+
+    <!-- Inactivity Warning Overlay -->
+    <div id="inactivity-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:99999;align-items:center;justify-content:center;">
+        <div style="background:#1e1e1e;border:1px solid #2c2c2c;border-radius:16px;padding:40px;max-width:400px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.8);">
+            <div style="font-size:48px;margin-bottom:16px;">&#9203;</div>
+            <h2 style="color:#e0e0e0;margin-bottom:8px;">Still there?</h2>
+            <p style="color:#a0a0a0;margin-bottom:6px;">You've been inactive for 20 minutes.</p>
+            <p style="color:#a0a0a0;margin-bottom:24px;">You'll be automatically signed out in <strong style="color:#10b981;" id="inactivity-countdown">10:00</strong>.</p>
+            <div style="display:flex;gap:12px;justify-content:center;">
+                <button onclick="resetInactivityTimer()" style="padding:12px 24px;background:#10b981;color:white;border:none;border-radius:8px;font-weight:600;font-size:15px;cursor:pointer;">
+                    I'm still here
+                </button>
+                <button onclick="doInactivityLogout()" style="padding:12px 24px;background:#2a2a2a;color:#a0a0a0;border:1px solid #2c2c2c;border-radius:8px;font-weight:600;font-size:15px;cursor:pointer;">
+                    Sign Out
+                </button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
