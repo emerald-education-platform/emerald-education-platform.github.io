@@ -386,7 +386,7 @@
                     <li><a href="/">Home</a></li>
                     <li><a href="aboutus">About</a></li>
                     <li><a href="#features">How It Works</a></li>
-                    <li><a href="#login" class="btn">Login</a></li>
+                    <li><a href="#login" class="btn" id="nav-auth-btn">Login</a></li>
                 </ul>
             </nav>
         </div>
@@ -471,7 +471,7 @@
                 </div>
                 <div class="footer-contact">
                     <h4>Contact Support</h4>
-                    <p><i class="fas fa-envelope"></i> contact@emeraldedu.org (currently unavaliable)</p>
+                    <p><i class="fas fa-envelope"></i> <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="5b3834352f3a382f1b3e363e293a373f3e3f2e7534293c">[email&#160;protected]</a> (currently unavaliable)</p>
                     <p><i class="fas fa-phone"></i> School IT Extension: 5555 (currently unavaliable)</p>
                 </div>
             </div>
@@ -481,7 +481,7 @@
         </div>
     </footer>
     <!-- Then replace your entire custom script block with this: -->
-    <script>
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
         // 1. WAIT FOR WINDOW TO BE READY
         document.addEventListener('DOMContentLoaded', function() {
             console.log('DOM loaded, checking for Supabase...');
@@ -736,9 +736,15 @@
                 
                 // 3. Update page title
                 document.title = `${displayName}'s Dashboard - Emerald Exchange`;
+
+                // 4. Swap nav button to Log Out
+                updateNavAuthBtn(true);
             }
 
             function showLoginUI() {
+                // Restore nav button to Login
+                updateNavAuthBtn(false);
+
                 // Ensure login section shows the button (in case it was hidden)
                 const loginSection = document.querySelector('.login-section');
                 if (loginSection) {
@@ -764,7 +770,7 @@
                     async (event, session) => {
                         console.log('Supabase Auth event:', event, 'Session present?', !!session);
                         
-                        if (session) {href
+                        if (session) {
                             // User just logged in or session was refreshed
                             console.log('User is logged in:', session.user.email);
                             transformToDashboard(session.user);
@@ -780,17 +786,33 @@
                 return subscription;
             }
 
-            // Update your page load initialization
+            // ── Swap nav button between Login / Log Out ──
+            function updateNavAuthBtn(loggedIn) {
+                const btn = document.getElementById('nav-auth-btn');
+                if (!btn) return;
+                if (loggedIn) {
+                    btn.textContent = 'Log Out';
+                    btn.removeAttribute('href');
+                    btn.style.cursor = 'pointer';
+                    btn.onclick = (e) => { e.preventDefault(); logout(); };
+                } else {
+                    btn.textContent = 'Login';
+                    btn.setAttribute('href', '#login');
+                    btn.onclick = null;
+                }
+            }
+
+            // Update page load initialization
             document.addEventListener('DOMContentLoaded', function() {
                 console.log('DOM loaded, setting up auth...');
-                
-                // 1. Set up the listener first
+
+                // 1. Set up the auth state listener
                 setupAuthListener();
-                
-                // 2. Then check the current session
-                checkAuthAndRedirect(); // Your existing function
+
+                // 2. Check existing session immediately
+                checkAuthAndRedirect();
             });
-        });
-    </script>
-</body>
+        })();
+        </script>
+    </body>
 </html>
