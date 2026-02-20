@@ -439,7 +439,7 @@
 <!-- Reset Confirm Modal -->
 <div class="modal-overlay" id="reset-modal">
     <div class="modal-box">
-        <div class="modal-icon">⚠️</div>
+        <div class="modal-icon"><i class="fas fa-exclamation-triangle" style="color:#ea3943;font-size:40px;"></i></div>
         <h3>Reset Portfolio?</h3>
         <p>This will permanently delete all your holdings, transactions, and watchlist data. Your cash will be restored to <strong style="color:var(--primary);">$10,000</strong>. This cannot be undone.</p>
         <div class="modal-actions">
@@ -608,31 +608,31 @@
         try {
             const uid = currentUser.id;
 
-            // Delete portfolio, transactions, portfolio_history, watchlist
-            await supabase.from('portfolio').delete().eq('user_id', uid);
-            await supabase.from('transactions').delete().eq('user_id', uid);
+            // Clear all user data — order matters to avoid FK constraint issues
             await supabase.from('portfolio_history').delete().eq('user_id', uid);
+            await supabase.from('transactions').delete().eq('user_id', uid);
+            await supabase.from('portfolio').delete().eq('user_id', uid);
 
-            // Try watchlist too (may not exist in all setups)
+            // Watchlist — try common table name variants
             try { await supabase.from('watchlist').delete().eq('user_id', uid); } catch(e) {}
+            try { await supabase.from('watchlist_items').delete().eq('user_id', uid); } catch(e) {}
 
-            // Reset cash to starting balance
+            // Restore starting cash
             await supabase.from('user_profiles')
                 .update({ cash_balance: STARTING_BALANCE })
                 .eq('id', uid);
 
-            closeModal('reset-modal');
-            showToast('Portfolio Reset', 'Your portfolio has been reset to $10,000 cash.', 'success');
+            showToast('Portfolio Reset', 'All data cleared. Redirecting to your fresh portfolio…', 'success', 2500);
 
-            // Reload stats
-            await loadPortfolioStats(uid);
+            // Redirect so portfolio.html reloads all charts/cards from clean Supabase state
+            setTimeout(() => { window.location.href = 'portfolio.html?reset=1'; }, 1800);
 
         } catch (e) {
             console.error('Reset error:', e);
             showToast('Error', 'Failed to reset portfolio: ' + e.message, 'error');
-        } finally {
             btn.innerHTML = '<i class="fas fa-redo"></i> Yes, Reset Everything';
             btn.disabled = false;
+            closeModal('reset-modal');
         }
     }
 
