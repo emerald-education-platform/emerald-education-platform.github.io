@@ -425,7 +425,22 @@
             .summary-grid { grid-template-columns: 1fr; }
             .filters-grid { grid-template-columns: 1fr; }
         }
+        /* ── Light Theme ── */
+        :root[data-theme="light"] {
+            --dark-bg: #f0f2f5;
+            --card-bg: #ffffff;
+            --sidebar-bg: #ffffff;
+            --text-primary: #111827;
+            --text-secondary: #6b7280;
+            --border-dark: #e5e7eb;
+            --hover-bg: #f3f4f6;
+            --table-header-bg: #f9fafb;
+            --shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        body { transition: background 0.25s, color 0.25s; }
+        .sidebar, .section-card, .summary-card { transition: background 0.25s, border-color 0.25s; }
     </style>
+    <script>(function(){ const t=localStorage.getItem('ese_theme'); if(t) document.documentElement.setAttribute('data-theme',t); })();</script>
 </head>
 <body>
 <div class="dashboard-container">
@@ -866,15 +881,21 @@
         let warnTimer, logoutTimer, countdownInterval;
         let warningVisible = false;
 
+        function isEnabled() {
+            return localStorage.getItem('ese_inactivity') !== 'off' && !window._inactivityDisabled;
+        }
+
         function resetTimers() {
             clearTimeout(warnTimer);
             clearTimeout(logoutTimer);
             if (warningVisible) hideWarning();
+            if (!isEnabled()) return;
             warnTimer   = setTimeout(showWarning,  WARN_MS);
             logoutTimer = setTimeout(autoLogout,   LOGOUT_MS);
         }
 
         function showWarning() {
+            if (!isEnabled()) return;
             warningVisible = true;
             const overlay = document.getElementById('inactivity-overlay');
             if (overlay) overlay.style.display = 'flex';
@@ -909,10 +930,11 @@
         window.doInactivityLogout   = autoLogout;
 
         ['mousemove','mousedown','keydown','touchstart','scroll','click'].forEach(evt =>
-            document.addEventListener(evt, resetTimers, { passive: true })
+            document.addEventListener(evt, () => { if (isEnabled()) resetTimers(); }, { passive: true })
         );
 
-        resetTimers();
+        window.resetInactivityTimer = function() { window._inactivityDisabled = false; resetTimers(); };
+        if (isEnabled()) resetTimers();
     })();
 
 </script>
