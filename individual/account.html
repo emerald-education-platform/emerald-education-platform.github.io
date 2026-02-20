@@ -605,35 +605,40 @@
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetting...';
         btn.disabled = true;
 
-        try {
-            const uid = currentUser.id;
+        const uid = currentUser.id;
+        const errors = [];
 
-            // Clear all user data — order matters to avoid FK constraint issues
-            await supabase.from('portfolio_history').delete().eq('user_id', uid);
-            await supabase.from('transactions').delete().eq('user_id', uid);
-            await supabase.from('portfolio').delete().eq('user_id', uid);
+        // ── Supabase .delete() NEVER throws — it returns { error }.
+        //    We must check every response explicitly. ──────────────
+        const { error: e1 } = await supabase.from('portfolio_history').delete().eq('user_id', uid);
+        if (e1) { console.error('portfolio_history delete failed:', e1); errors.push('history: ' + e1.message); }
 
-            // Watchlist — try common table name variants
-            try { await supabase.from('watchlist').delete().eq('user_id', uid); } catch(e) {}
-            try { await supabase.from('watchlist_items').delete().eq('user_id', uid); } catch(e) {}
+        const { error: e2 } = await supabase.from('transactions').delete().eq('user_id', uid);
+        if (e2) { console.error('transactions delete failed:', e2); errors.push('transactions: ' + e2.message); }
 
-            // Restore starting cash
-            await supabase.from('user_profiles')
-                .update({ cash_balance: STARTING_BALANCE })
-                .eq('id', uid);
+        const { error: e3 } = await supabase.from('portfolio').delete().eq('user_id', uid);
+        if (e3) { console.error('portfolio delete failed:', e3); errors.push('portfolio: ' + e3.message); }
 
-            showToast('Portfolio Reset', 'All data cleared. Redirecting to your fresh portfolio…', 'success', 2500);
+        // Watchlist — try both common table name variants (soft fail OK)
+        await supabase.from('watchlist').delete().eq('user_id', uid);
+        await supabase.from('watchlist_items').delete().eq('user_id', uid);
 
-            // Redirect so portfolio.html reloads all charts/cards from clean Supabase state
-            setTimeout(() => { window.location.href = 'portfolio.html?reset=1'; }, 1800);
+        // Restore starting cash
+        const { error: e4 } = await supabase.from('user_profiles')
+            .update({ cash_balance: STARTING_BALANCE })
+            .eq('id', uid);
+        if (e4) { console.error('user_profiles update failed:', e4); errors.push('balance: ' + e4.message); }
 
-        } catch (e) {
-            console.error('Reset error:', e);
-            showToast('Error', 'Failed to reset portfolio: ' + e.message, 'error');
+        if (errors.length > 0) {
+            showToast('Reset Error', 'Some data could not be cleared: ' + errors.join(', '), 'error', 7000);
             btn.innerHTML = '<i class="fas fa-redo"></i> Yes, Reset Everything';
             btn.disabled = false;
             closeModal('reset-modal');
+            return;
         }
+
+        showToast('Portfolio Reset', 'All data cleared. Redirecting…', 'success', 2500);
+        setTimeout(() => { window.location.href = 'portfolio.html?reset=1'; }, 1800);
     }
 
     // ── Inactivity Timeout ──
