@@ -879,7 +879,7 @@
     async function fetchYahooStockQuote(symbol) {
         try {
             const yahooSymbol = symbol.replace('.', '-');
-            const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=1d`;
+            const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=1mo`;
             const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`;
             const response = await fetch(proxyUrl);
             if (!response.ok) return null;
@@ -889,15 +889,20 @@
             const quote = result.meta;
             const indicators = result.indicators?.quote?.[0];
             if (!quote || !indicators) return null;
-            const currentPrice = quote.regularMarketPrice || quote.previousClose;
-            const previousClose = quote.chartPreviousClose || quote.previousClose;
+
+            const closePrices = indicators.close?.filter(price => Number.isFinite(price)) || [];
+            const latestClose = closePrices.length > 0 ? closePrices[closePrices.length - 1] : null;
+            const priorClose = closePrices.length > 1 ? closePrices[closePrices.length - 2] : null;
+
+            const currentPrice = quote.regularMarketPrice || latestClose || quote.previousClose || 0;
+            const previousClose = priorClose || quote.regularMarketPreviousClose || quote.previousClose || quote.chartPreviousClose || currentPrice;
             const change = currentPrice - previousClose;
             return {
                 symbol,
                 name: getCompanyName(symbol),
                 current_price: currentPrice,
                 change,
-                change_percent: (change / previousClose) * 100,
+                change_percent: previousClose > 0 ? (change / previousClose) * 100 : 0,
                 volume: (indicators.volume?.filter(v => v != null) || []).at(-1) || 0,
                 market_cap: quote.marketCap || 0
             };
