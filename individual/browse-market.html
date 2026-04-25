@@ -1889,14 +1889,8 @@
             const validHighs = chartData.map(point => point.high).filter(value => Number.isFinite(value));
             const validLows = chartData.map(point => point.low).filter(value => Number.isFinite(value));
 
-            document.getElementById('modal-price').textContent = formatSignedCurrency(change);
-            document.getElementById('modal-change').innerHTML = `
-                <span style="opacity: 0.8;">${getPeriodSummaryLabel(period)} change:</span>
-                ${formatSignedPercent(changePercent)}
-                <span style="display: block; margin-top: 4px; font-size: 12px; opacity: 0.85;">
-                    $${basePrice.toFixed(2)} -> $${displayPrice.toFixed(2)}
-                </span>
-            `;
+            document.getElementById('modal-price').textContent = `$${displayPrice.toFixed(2)}`;
+            document.getElementById('modal-change').textContent = `${formatSignedCurrency(change)} (${formatSignedPercent(changePercent)})`;
             document.getElementById('modal-change').className = `change ${changeClass}`;
 
             if (rangeLabel) {
@@ -1947,15 +1941,9 @@
             document.getElementById('modal-company-name').textContent = stock.name;
             
             // Update price info
-            document.getElementById('modal-price').textContent = formatSignedCurrency(stock.change);
+            document.getElementById('modal-price').textContent = `$${stock.current_price.toFixed(2)}`;
             const changeClass = stock.change >= 0 ? 'positive' : 'negative';
-            document.getElementById('modal-change').innerHTML = `
-                <span style="opacity: 0.8;">Today change:</span>
-                ${formatSignedPercent(stock.change_percent)}
-                <span style="display: block; margin-top: 4px; font-size: 12px; opacity: 0.85;">
-                    Current price: $${stock.current_price.toFixed(2)}
-                </span>
-            `;
+            document.getElementById('modal-change').textContent = `${formatSignedCurrency(stock.change)} (${formatSignedPercent(stock.change_percent)})`;
             document.getElementById('modal-change').className = `change ${changeClass}`;
             
             // Update stats
@@ -2637,14 +2625,16 @@
                     return null;
                 }
                 
-                // Use Yahoo's regular market fields first so the table preview reflects the actual daily move.
-                const currentPrice = quote.regularMarketPrice || quote.previousClose || 0;
-                const previousClose = quote.regularMarketPreviousClose || quote.previousClose || quote.chartPreviousClose || 0;
+                // Use the actual latest close history to compute the preview's 1D move.
+                const closePrices = indicators.close?.filter(price => Number.isFinite(price)) || [];
+                const latestClose = closePrices.length > 0 ? closePrices[closePrices.length - 1] : null;
+                const priorClose = closePrices.length > 1 ? closePrices[closePrices.length - 2] : null;
 
-                let change = Number.isFinite(quote.regularMarketChange) ? quote.regularMarketChange : currentPrice - previousClose;
-                let changePercent = Number.isFinite(quote.regularMarketChangePercent)
-                    ? quote.regularMarketChangePercent
-                    : (previousClose > 0 ? (change / previousClose) * 100 : 0);
+                const currentPrice = quote.regularMarketPrice || latestClose || quote.previousClose || 0;
+                const previousClose = priorClose || quote.regularMarketPreviousClose || quote.previousClose || quote.chartPreviousClose || 0;
+
+                let change = currentPrice - previousClose;
+                let changePercent = previousClose > 0 ? (change / previousClose) * 100 : 0;
 
                 if (!Number.isFinite(change)) change = 0;
                 if (!Number.isFinite(changePercent)) changePercent = 0;
@@ -2654,7 +2644,6 @@
                 const volume = volumes.length > 0 ? volumes[volumes.length - 1] : 0;
                 
                 // Extract historical closing prices for sparkline (last 20 points)
-                const closePrices = indicators.close?.filter(price => price != null) || [];
                 const history = closePrices.length > 0 ? closePrices.slice(-20) : null;
                 
                 // Return with original symbol format (user's input) and historical data
