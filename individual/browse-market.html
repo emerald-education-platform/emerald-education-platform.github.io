@@ -1889,10 +1889,13 @@
             const validHighs = chartData.map(point => point.high).filter(value => Number.isFinite(value));
             const validLows = chartData.map(point => point.low).filter(value => Number.isFinite(value));
 
-            document.getElementById('modal-price').textContent = `$${displayPrice.toFixed(2)}`;
+            document.getElementById('modal-price').textContent = formatSignedCurrency(change);
             document.getElementById('modal-change').innerHTML = `
-                <span style="opacity: 0.8;">${getPeriodSummaryLabel(period)}:</span>
-                ${formatSignedCurrency(change)} (${formatSignedPercent(changePercent)})
+                <span style="opacity: 0.8;">${getPeriodSummaryLabel(period)} change:</span>
+                ${formatSignedPercent(changePercent)}
+                <span style="display: block; margin-top: 4px; font-size: 12px; opacity: 0.85;">
+                    $${basePrice.toFixed(2)} -> $${displayPrice.toFixed(2)}
+                </span>
             `;
             document.getElementById('modal-change').className = `change ${changeClass}`;
 
@@ -1944,11 +1947,14 @@
             document.getElementById('modal-company-name').textContent = stock.name;
             
             // Update price info
-            document.getElementById('modal-price').textContent = `$${stock.current_price.toFixed(2)}`;
+            document.getElementById('modal-price').textContent = formatSignedCurrency(stock.change);
             const changeClass = stock.change >= 0 ? 'positive' : 'negative';
-            const changeSign = stock.change >= 0 ? '+' : '';
             document.getElementById('modal-change').innerHTML = `
-                ${changeSign}$${stock.change.toFixed(2)} (${changeSign}${stock.change_percent.toFixed(2)}%)
+                <span style="opacity: 0.8;">Today change:</span>
+                ${formatSignedPercent(stock.change_percent)}
+                <span style="display: block; margin-top: 4px; font-size: 12px; opacity: 0.85;">
+                    Current price: $${stock.current_price.toFixed(2)}
+                </span>
             `;
             document.getElementById('modal-change').className = `change ${changeClass}`;
             
