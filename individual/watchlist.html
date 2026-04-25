@@ -978,7 +978,7 @@
                 <div class="value" id="stat-marketcap">—</div>
             </div>
             <div class="stat-item">
-                <div class="label">Day Range</div>
+                <div class="label" id="stat-range-label">Day Range</div>
                 <div class="value" id="stat-range">—</div>
             </div>
         </div>
@@ -1159,9 +1159,14 @@
 
             if (!quote) throw new Error('No quote data');
 
-            // Calculate properly
-            const currentPrice = quote.regularMarketPrice || quote.previousClose || 0;
-            const previousClose = quote.chartPreviousClose || quote.previousClose || currentPrice;
+            // Compute the 1D move from the latest two valid closes so the watchlist
+            // preview matches the actual daily change.
+            const closePrices = indicators?.close?.filter(p => Number.isFinite(p)) || [];
+            const latestClose = closePrices.length > 0 ? closePrices[closePrices.length - 1] : null;
+            const priorClose = closePrices.length > 1 ? closePrices[closePrices.length - 2] : null;
+
+            const currentPrice = quote.regularMarketPrice || latestClose || quote.previousClose || 0;
+            const previousClose = priorClose || quote.regularMarketPreviousClose || quote.previousClose || quote.chartPreviousClose || currentPrice;
             const change = currentPrice - previousClose;
             const changePercent = previousClose > 0 ? (change / previousClose) * 100 : 0;
 
@@ -1170,7 +1175,6 @@
             const volume = volumes.length > 0 ? volumes[volumes.length - 1] : 0;
 
             // Extract historical closing prices for sparkline (last 20 points)
-            const closePrices = indicators?.close?.filter(p => p != null) || [];
             const history = closePrices.length > 0 ? closePrices.slice(-20) : null;
 
             return {
@@ -1525,6 +1529,90 @@
     let stockChart = null;
     let currentChartPeriod = '1D';
 
+    function getRangeLabel(period) {
+        if (period === '1D') return 'Day Range';
+        if (period === 'MAX') return 'All-Time Range';
+        return `${period} Range`;
+    }
+
+    function formatSignedCurrency(value) {
+        const sign = value >= 0 ? '+' : '-';
+        return `${sign}$${Math.abs(value).toFixed(2)}`;
+    }
+
+    function formatSignedPercent(value) {
+        const sign = value >= 0 ? '+' : '-';
+        return `${sign}${Math.abs(value).toFixed(2)}%`;
+    }
+
+    function updateModalSummaryForPeriod(stock, period, chartData, meta = {}) {
+        if (!chartData || chartData.length === 0) return;
+
+        const firstClose = chartData[0]?.close;
+        const lastClose = chartData[chartData.length - 1]?.close;
+        const livePrice = Number.isFinite(stock?.current_price) ? stock.current_price : lastClose;
+        const displayPrice = Number.isFinite(livePrice) ? livePrice : lastClose;
+
+        let basePrice = firstClose;
+        const previousClose = meta.previousClose ?? meta.chartPreviousClose;
+        if (period === '1D' && Number.isFinite(previousClose) && previousClose > 0) {
+            basePrice = previousClose;
+        }
+
+        if (!Number.isFinite(basePrice) || basePrice <= 0 || !Number.isFinite(displayPrice)) {
+            return;
+        }
+
+        const change = displayPrice - basePrice;
+        const changePercent = (change / basePrice) * 100;
+        const changeClass = change >= 0 ? 'positive' : 'negative';
+        const rangeLabel = document.getElementById('stat-range-label');
+        const validHighs = chartData.map(point => point.high).filter(value => Number.isFinite(value));
+        const validLows = chartData.map(point => point.low).filter(value => Number.isFinite(value));
+
+        document.getElementById('modal-price').textContent = `$${displayPrice.toFixed(2)}`;
+        document.getElementById('modal-change').textContent = `${formatSignedCurrency(change)} (${formatSignedPercent(changePercent)})`;
+        document.getElementById('modal-change').className = `change ${changeClass}`;
+
+        if (rangeLabel) {
+            rangeLabel.textContent = getRangeLabel(period);
+        }
+
+        if (validHighs.length && validLows.length) {
+            const high = Math.max(...validHighs);
+            const low = Math.min(...validLows);
+            document.getElementById('stat-range').textContent = `$${low.toFixed(2)} - $${high.toFixed(2)}`;
+        } else {
+            document.getElementById('stat-range').textContent = '—';
+        }
+    }
+
+    function formatTooltipTimestamp(timestamp, period) {
+        const date = new Date(timestamp);
+        if (period === '1D' || period === '5D') {
+            return date.toLocaleString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit'
+            });
+        }
+
+        if (period === '1M' || period === '3M') {
+            return date.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+            });
+        }
+
+        return date.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+        });
+    }
+
     // Load user's cash balance
     async function loadUserCash() {
         if (!supabase || !currentUser) return;
@@ -1607,8 +1695,9 @@
         }
 
         try {
-            const historicalData = await fetchHistoricalData(currentModalStock.symbol, period);
-            renderStockChart(historicalData, period);
+            const { points, meta } = await fetchHistoricalData(currentModalStock.symbol, period);
+            updateModalSummaryForPeriod(currentModalStock, period, points, meta);
+            renderStockChart(points, period);
             document.getElementById('chart-loading').style.display = 'none';
         } catch (e) {
             console.error('Error loading chart:', e);
@@ -1654,17 +1743,10 @@
             low: lows[i]
         })).filter(d => d.close !== null && d.close !== undefined);
 
-        if (highs.length && lows.length) {
-            const validHighs = highs.filter(h => h != null);
-            const validLows = lows.filter(l => l != null);
-            if (validHighs.length && validLows.length) {
-                const high = Math.max(...validHighs);
-                const low = Math.min(...validLows);
-                document.getElementById('stat-range').textContent = `$${low.toFixed(2)} - $${high.toFixed(2)}`;
-            }
-        }
-
-        return chartData;
+        return {
+            points: chartData,
+            meta: result.meta || {}
+        };
     }
 
     function renderStockChart(data, period) {
@@ -1725,7 +1807,10 @@
                         padding: 12,
                         displayColors: false,
                         callbacks: {
-                            title: (ctx) => ctx[0].label,
+                            title: (ctx) => {
+                                const point = data[ctx[0].dataIndex];
+                                return point ? formatTooltipTimestamp(point.timestamp, period) : ctx[0].label;
+                            },
                             label: (ctx) => `Price: $${ctx.parsed.y.toFixed(2)}`
                         }
                     }
