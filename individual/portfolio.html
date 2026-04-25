@@ -258,6 +258,38 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 20px;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .portfolio-chart-tabs {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .portfolio-chart-tabs button {
+            padding: 7px 12px;
+            background: transparent;
+            border: 1px solid var(--border-dark);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .portfolio-chart-tabs button:hover {
+            color: var(--text-primary);
+            border-color: var(--text-secondary);
+            background: var(--hover-bg);
+        }
+
+        .portfolio-chart-tabs button.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
         }
 
         .section-title {
@@ -700,6 +732,14 @@
             <div class="section-card">
                 <div class="section-header">
                     <span class="section-title"><i class="fas fa-chart-line" style="color: var(--primary); margin-right: 8px;"></i>Portfolio Value Over Time</span>
+                    <div class="portfolio-chart-tabs">
+                        <button onclick="setPortfolioChartRange('5D')" id="portfolio-tab-5D">5D</button>
+                        <button onclick="setPortfolioChartRange('1M')" id="portfolio-tab-1M">1M</button>
+                        <button onclick="setPortfolioChartRange('3M')" id="portfolio-tab-3M">3M</button>
+                        <button onclick="setPortfolioChartRange('6M')" id="portfolio-tab-6M">6M</button>
+                        <button onclick="setPortfolioChartRange('1Y')" id="portfolio-tab-1Y">1Y</button>
+                        <button onclick="setPortfolioChartRange('MAX')" class="active" id="portfolio-tab-MAX">MAX</button>
+                    </div>
                 </div>
                 <canvas id="valueChart" style="max-height: 250px;"></canvas>
             </div>
@@ -1640,6 +1680,7 @@
     // ══════════════════════════════════════════════════════
 
     let valueChart, sectorChart, performanceChart;
+    let currentPortfolioChartRange = 'MAX';
 
     async function renderCharts() {
         if (typeof Chart === 'undefined') {
@@ -1657,104 +1698,99 @@
         renderPerformanceChart();
     }
 
+    function setPortfolioChartRange(range) {
+        currentPortfolioChartRange = range;
+        updatePortfolioChartTabs();
+        renderValueChart();
+    }
+
+    function updatePortfolioChartTabs() {
+        document.querySelectorAll('.portfolio-chart-tabs button').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        const activeBtn = document.getElementById(`portfolio-tab-${currentPortfolioChartRange}`);
+        if (activeBtn) activeBtn.classList.add('active');
+    }
+
+    function parseLocalSnapshotDate(dateString) {
+        const [year, month, day] = dateString.split('-').map(Number);
+        return new Date(year, month - 1, day);
+    }
+
+    function formatPortfolioChartLabel(date, range, isCurrent = false) {
+        if (isCurrent) return 'Now';
+        if (range === '5D' || range === '1M' || range === '3M') {
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+        return date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+    }
+
+    function formatPortfolioTooltipDate(point) {
+        if (point.isCurrent) return 'Now';
+        return point.date.toLocaleDateString('en-US', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+        });
+    }
+
+    function filterPortfolioTimeline(points, range) {
+        if (!points.length || range === 'MAX') return points;
+
+        if (range === '5D') {
+            return points.slice(-Math.min(points.length, 5));
+        }
+
+        const cutoff = new Date();
+        if (range === '1M') cutoff.setMonth(cutoff.getMonth() - 1);
+        if (range === '3M') cutoff.setMonth(cutoff.getMonth() - 3);
+        if (range === '6M') cutoff.setMonth(cutoff.getMonth() - 6);
+        if (range === '1Y') cutoff.setFullYear(cutoff.getFullYear() - 1);
+
+        const filtered = points.filter(point => point.isCurrent || point.date >= cutoff);
+        if (filtered.length >= 2) return filtered;
+        return points.slice(-Math.min(points.length, 2));
+    }
+
     async function renderValueChart() {
         const ctx = document.getElementById('valueChart');
         if (!ctx) return;
 
-        let labels = [];
-        let data = [];
+        updatePortfolioChartTabs();
+
+        let timeline = [];
 
         if (supabase && currentUser) {
             try {
-                // First, try to load historical snapshots
                 const { data: snapshots, error: snapshotError } = await supabase
                     .from('portfolio_history')
-                    .select('*')
+                    .select('snapshot_date, total_value')
                     .eq('user_id', currentUser.id)
                     .order('snapshot_date', { ascending: true });
 
                 if (!snapshotError && snapshots && snapshots.length > 0) {
-                    // Use snapshot-based chart (much more accurate!)
                     console.log(`Building chart from ${snapshots.length} daily snapshots`);
-                    
-                    labels.push('Start');
-                    data.push(getStartingBalance());
 
                     snapshots.forEach(snapshot => {
-                        // Parse date parts directly to avoid UTC→local timezone shift
-                        // (new Date('2026-02-19') is UTC midnight, which becomes Feb 18 in US timezones)
-                        const [year, month, day] = snapshot.snapshot_date.split('-').map(Number);
-                        const date = new Date(year, month - 1, day); // local time, no offset
-                        const label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                        labels.push(label);
-                        data.push(parseFloat(snapshot.total_value));
+                        timeline.push({
+                            date: parseLocalSnapshotDate(snapshot.snapshot_date),
+                            total: parseFloat(snapshot.total_value),
+                            isCurrent: false
+                        });
                     });
 
-                    // Add current value if it's different from last snapshot
                     const currentValue = userCash + getTotalPortfolioValue();
                     const lastSnapshot = snapshots[snapshots.length - 1];
-                    // Use local date for comparison (not UTC)
                     const _ld2 = new Date();
                     const today = `${_ld2.getFullYear()}-${String(_ld2.getMonth()+1).padStart(2,'0')}-${String(_ld2.getDate()).padStart(2,'0')}`;
-                    
+
                     if (lastSnapshot.snapshot_date !== today) {
-                        labels.push('Now');
-                        data.push(currentValue);
-                    }
-                } else {
-                    // Fallback: Build from transactions (old method)
-                    console.log('No snapshots found, building chart from transactions');
-                    
-                    const { data: transactions } = await supabase
-                        .from('transactions')
-                        .select('*')
-                        .eq('user_id', currentUser.id)
-                        .order('created_at', { ascending: true });
-
-                    if (transactions && transactions.length > 0) {
-                        let runningCash = STARTING_BALANCE;
-                        const holdings = {};
-                        const stockPrices = {};
-
-                        labels.push('Start');
-                        data.push(getStartingBalance());
-
-                        transactions.forEach((t, index) => {
-                            const amount = parseFloat(t.total_amount);
-                            const shares = t.quantity;
-                            const symbol = t.stock_symbol;
-                            const pricePerShare = parseFloat(t.price_per_share);
-
-                            stockPrices[symbol] = pricePerShare;
-
-                            if (t.transaction_type === 'BUY') {
-                                runningCash -= amount;
-                                holdings[symbol] = (holdings[symbol] || 0) + shares;
-                            } else {
-                                runningCash += amount;
-                                holdings[symbol] = (holdings[symbol] || 0) - shares;
-                            }
-
-                            let portfolioValue = 0;
-                            Object.keys(holdings).forEach(sym => {
-                                if (holdings[sym] > 0) {
-                                    const lastPrice = stockPrices[sym] || 0;
-                                    portfolioValue += holdings[sym] * lastPrice;
-                                }
-                            });
-
-                            const totalValue = runningCash + portfolioValue;
-
-                            if (transactions.length <= 30 || index >= transactions.length - 30) {
-                                const date = new Date(t.created_at);
-                                labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
-                                data.push(totalValue);
-                            }
+                        timeline.push({
+                            date: new Date(),
+                            total: currentValue,
+                            isCurrent: true
                         });
-
-                        const currentValue = userCash + getTotalPortfolioValue();
-                        labels.push('Now');
-                        data.push(currentValue);
                     }
                 }
             } catch (e) {
@@ -1762,12 +1798,19 @@
             }
         }
 
-        // If no data, show simple two-point chart
-        if (data.length === 0) {
+        if (timeline.length === 0) {
             const currentValue = userCash + getTotalPortfolioValue();
-            labels = ['Start', 'Now'];
-            data = [getStartingBalance(), currentValue];
+            timeline = [
+                { date: new Date(), total: getStartingBalance(), isCurrent: false },
+                { date: new Date(), total: currentValue, isCurrent: true }
+            ];
         }
+
+        const displayPoints = filterPortfolioTimeline(timeline, currentPortfolioChartRange);
+        const labels = displayPoints.map(point =>
+            formatPortfolioChartLabel(point.date, currentPortfolioChartRange, point.isCurrent)
+        );
+        const data = displayPoints.map(point => point.total);
 
         if (valueChart) valueChart.destroy();
         valueChart = new Chart(ctx, {
@@ -1791,6 +1834,10 @@
                     legend: { display: false },
                     tooltip: {
                         callbacks: {
+                            title: (context) => {
+                                const point = displayPoints[context[0].dataIndex];
+                                return point ? formatPortfolioTooltipDate(point) : context[0].label;
+                            },
                             label: (context) => `$${context.parsed.y.toFixed(2)}`
                         }
                     }
