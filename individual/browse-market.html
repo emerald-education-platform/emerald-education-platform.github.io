@@ -2637,11 +2637,17 @@
                     return null;
                 }
                 
-                // Get the latest values
-                const currentPrice = quote.regularMarketPrice || quote.previousClose;
-                const previousClose = quote.chartPreviousClose || quote.previousClose;
-                const change = currentPrice - previousClose;
-                const changePercent = (change / previousClose) * 100;
+                // Use Yahoo's regular market fields first so the table preview reflects the actual daily move.
+                const currentPrice = quote.regularMarketPrice || quote.previousClose || 0;
+                const previousClose = quote.regularMarketPreviousClose || quote.previousClose || quote.chartPreviousClose || 0;
+
+                let change = Number.isFinite(quote.regularMarketChange) ? quote.regularMarketChange : currentPrice - previousClose;
+                let changePercent = Number.isFinite(quote.regularMarketChangePercent)
+                    ? quote.regularMarketChangePercent
+                    : (previousClose > 0 ? (change / previousClose) * 100 : 0);
+
+                if (!Number.isFinite(change)) change = 0;
+                if (!Number.isFinite(changePercent)) changePercent = 0;
                 
                 // Volume is the last value in the array
                 const volumes = indicators.volume?.filter(v => v != null) || [];
