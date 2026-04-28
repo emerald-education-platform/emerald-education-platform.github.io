@@ -402,6 +402,7 @@
 
     let supabase = null;
     let currentUser = null;
+    const APP_CACHE_KEYS = ['userCash', 'userPortfolio', 'userTransactions', 'stocksData'];
 
     // ── Helpers ──
     function getStartingBalance() {
@@ -619,6 +620,38 @@
         document.getElementById('delete-confirm-input').classList.toggle('valid', valid);
     }
 
+    function clearClientPortfolioCache({ clearPreferences = false, clearAuthSession = false } = {}) {
+        const keys = [...APP_CACHE_KEYS];
+        if (clearPreferences) keys.push('ese_theme', 'ese_inactivity', 'ese_start_balance');
+
+        keys.forEach(key => {
+            localStorage.removeItem(key);
+            sessionStorage.removeItem(key);
+        });
+
+        if (clearAuthSession) {
+            [localStorage, sessionStorage].forEach(store => {
+                Object.keys(store).forEach(key => {
+                    if (key.includes('nlcdgfpnreyjoomctoht') || key.includes('supabase.auth')) {
+                        store.removeItem(key);
+                    }
+                });
+            });
+        }
+    }
+
+    function isMissingRelationError(error) {
+        return !!error && (error.code === '42P01' || /does not exist/i.test(error.message));
+    }
+
+    async function runDeleteStep(table, column, value, errors, { label = table, optional = false } = {}) {
+        const { error } = await supabase.from(table).delete().eq(column, value);
+        if (error && !(optional && isMissingRelationError(error))) {
+            console.error(`${label} delete error:`, error);
+            errors.push(`${label}: ${error.message}`);
+        }
+    }
+
     // ── Execute Reset ──
     async function executeReset() {
         if (!supabase || !currentUser) return;
@@ -629,14 +662,11 @@
         const uid = currentUser.id;
         const errors = [];
 
-        const { error: e1 } = await supabase.from('portfolio_history').delete().eq('user_id', uid);
-        if (e1) { console.error(e1); errors.push('history: ' + e1.message); }
-        const { error: e2 } = await supabase.from('transactions').delete().eq('user_id', uid);
-        if (e2) { console.error(e2); errors.push('transactions: ' + e2.message); }
-        const { error: e3 } = await supabase.from('portfolio').delete().eq('user_id', uid);
-        if (e3) { console.error(e3); errors.push('portfolio: ' + e3.message); }
-        await supabase.from('watchlist').delete().eq('user_id', uid);
-        await supabase.from('watchlist_items').delete().eq('user_id', uid);
+        await runDeleteStep('portfolio_history', 'user_id', uid, errors, { label: 'history', optional: true });
+        await runDeleteStep('transactions', 'user_id', uid, errors, { label: 'transactions' });
+        await runDeleteStep('portfolio', 'user_id', uid, errors, { label: 'portfolio' });
+        await runDeleteStep('watchlist', 'user_id', uid, errors, { label: 'watchlist', optional: true });
+        await runDeleteStep('watchlist_items', 'user_id', uid, errors, { label: 'watchlist items', optional: true });
 
         const startBal = getStartingBalance();
         const { error: e4 } = await supabase.from('user_profiles').update({ cash_balance: startBal }).eq('id', uid);
@@ -646,12 +676,13 @@
             showToast('Reset Error', errors.join(' | '), 'error', 8000);
             btn.innerHTML = '<i class="fas fa-redo"></i> Yes, Reset Everything';
             btn.disabled = false;
-            closeModal('reset-modal');
             return;
         }
 
+        clearClientPortfolioCache();
+        closeModal('reset-modal');
         showToast('Portfolio Reset', 'All data cleared. Redirecting…', 'success', 2500);
-        setTimeout(() => { window.location.href = 'portfolio.html?reset=1'; }, 1800);
+        setTimeout(() => { window.location.replace('portfolio.html?reset=1'); }, 1800);
     }
 
     // ── Execute Delete Account ──
@@ -662,24 +693,36 @@
         btn.disabled = true;
 
         const uid = currentUser.id;
+        const errors = [];
 
-        // Delete all app data (errors are soft — we still sign out either way)
-        await supabase.from('portfolio_history').delete().eq('user_id', uid);
-        await supabase.from('transactions').delete().eq('user_id', uid);
-        await supabase.from('portfolio').delete().eq('user_id', uid);
-        await supabase.from('watchlist').delete().eq('user_id', uid);
-        await supabase.from('watchlist_items').delete().eq('user_id', uid);
-        await supabase.from('user_profiles').delete().eq('id', uid);
+        await runDeleteStep('portfolio_history', 'user_id', uid, errors, { label: 'history', optional: true });
+        await runDeleteStep('transactions', 'user_id', uid, errors, { label: 'transactions' });
+        await runDeleteStep('portfolio', 'user_id', uid, errors, { label: 'portfolio' });
+        await runDeleteStep('watchlist', 'user_id', uid, errors, { label: 'watchlist', optional: true });
+        await runDeleteStep('watchlist_items', 'user_id', uid, errors, { label: 'watchlist items', optional: true });
 
-        // Clear all local preferences
-        ['ese_theme', 'ese_inactivity', 'ese_start_balance'].forEach(k => localStorage.removeItem(k));
+        const { error: profileError } = await supabase.from('user_profiles').delete().eq('id', uid);
+        if (profileError) {
+            console.error('profile delete error:', profileError);
+            errors.push(`profile: ${profileError.message}`);
+        }
 
-        // Sign out (note: the Supabase Auth entry itself requires a service-role key to fully delete,
-        // but all app data is gone — re-authenticating would create a fresh profile)
-        await supabase.auth.signOut();
+        if (errors.length > 0) {
+            showToast('Delete Error', errors.join(' | '), 'error', 8000);
+            btn.innerHTML = '<i class="fas fa-trash-alt"></i> Delete My Account';
+            btn.disabled = false;
+            return;
+        }
 
+        try {
+            await supabase.auth.signOut({ scope: 'global' });
+        } catch (error) {
+            console.warn('Global sign-out warning:', error);
+        }
+
+        clearClientPortfolioCache({ clearPreferences: true, clearAuthSession: true });
         showToast('Account Deleted', 'Your data has been erased. Goodbye!', 'success', 3000);
-        setTimeout(() => { window.location.href = 'index.html'; }, 2000);
+        setTimeout(() => { window.location.replace('index.html?accountDeleted=1'); }, 1500);
     }
 
     // ── Inactivity Timeout ──
