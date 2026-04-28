@@ -214,9 +214,18 @@
             transition: transform 0.2s, box-shadow 0.2s;
         }
 
+        .summary-card.clickable-card {
+            cursor: pointer;
+        }
+
         .summary-card:hover {
             transform: translateY(-3px);
             box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        }
+
+        .summary-card.clickable-card:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
         }
 
         .summary-card .label {
@@ -341,6 +350,10 @@
             background: var(--hover-bg);
         }
 
+        .holdings-table tbody tr.holding-row {
+            cursor: pointer;
+        }
+
         .symbol-cell {
             font-weight: 700;
             color: var(--primary);
@@ -447,6 +460,209 @@
             text-align: right;
             font-size: 13px;
             color: var(--text-secondary);
+        }
+
+        .section-pulse {
+            animation: sectionPulse 1.1s ease;
+        }
+
+        @keyframes sectionPulse {
+            0%   { box-shadow: 0 0 0 0 rgba(16,185,129,0.35); }
+            70%  { box-shadow: 0 0 0 14px rgba(16,185,129,0); }
+            100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); }
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.78);
+            z-index: 999;
+        }
+
+        .modal-overlay.active {
+            display: block;
+        }
+
+        #stock-detail-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: min(920px, 92vw);
+            max-height: 88vh;
+            background: var(--card-bg);
+            border: 1px solid var(--border-dark);
+            border-radius: 14px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            z-index: 1001;
+        }
+
+        #stock-detail-modal.active {
+            display: block;
+        }
+
+        .modal-header {
+            padding: 24px 28px;
+            border-bottom: 1px solid var(--border-dark);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            color: var(--text-primary);
+            font-size: 24px;
+        }
+
+        .close-modal {
+            font-size: 28px;
+            line-height: 1;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .close-modal:hover {
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            padding: 28px;
+            max-height: calc(88vh - 88px);
+            overflow-y: auto;
+        }
+
+        .stock-info-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 24px;
+        }
+
+        .stock-info-header .price {
+            font-size: 36px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .stock-info-header .change {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .time-period-tabs {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            border-bottom: 1px solid var(--border-dark);
+            padding-bottom: 12px;
+            margin-bottom: 22px;
+        }
+
+        .time-period-tabs button {
+            padding: 8px 16px;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .time-period-tabs button:hover {
+            background: var(--hover-bg);
+            color: var(--text-primary);
+        }
+
+        .time-period-tabs button.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-bottom: 24px;
+        }
+
+        .chart-loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: var(--text-secondary);
+            font-size: 14px;
+            z-index: 10;
+        }
+
+        .stock-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+
+        .stat-item {
+            background: var(--hover-bg);
+            border: 1px solid var(--border-dark);
+            border-radius: 10px;
+            padding: 16px;
+        }
+
+        .stat-item .label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .stat-item .value {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .modal-actions button {
+            border: none;
+            border-radius: 8px;
+            padding: 11px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+
+        .modal-actions button:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-close-modal {
+            background: var(--hover-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--border-dark);
+        }
+
+        .btn-trade-secondary {
+            background: var(--primary);
+            color: white;
         }
 
         /* Trading Panel */
@@ -611,6 +827,10 @@
             .summary-grid { grid-template-columns: repeat(2, 1fr); }
             .charts-grid { grid-template-columns: 1fr; }
             .trading-panel { width: 100%; }
+            .modal-header,
+            .modal-body { padding: 18px; }
+            .stock-info-header .price { font-size: 30px; }
+            .stock-stats-grid { grid-template-columns: repeat(2, 1fr); }
         }
         /* ── Light Theme ── */
         :root[data-theme="light"] {
@@ -631,6 +851,7 @@
     <script>(function(){ const t=localStorage.getItem('ese_theme'); if(t) document.documentElement.setAttribute('data-theme',t); })();</script>
 </head>
 <body>
+<div class="modal-overlay" id="modalOverlay" onclick="closeStockDetailModal()"></div>
 <div class="dashboard-container">
 
     <!-- ── Sidebar ── -->
@@ -700,10 +921,11 @@
                 <div class="value" id="card-invested">$0.00</div>
                 <div class="sub" id="card-invested-change">—</div>
             </div>
-            <div class="summary-card">
+            <div class="summary-card clickable-card" id="positions-card" role="button" tabindex="0"
+                 onclick="focusHoldingsSection()" onkeydown="handleSummaryCardKeydown(event)">
                 <div class="label">Positions</div>
                 <div class="value" id="card-positions">0</div>
-                <div class="sub" style="color: var(--text-secondary);">Active holdings</div>
+                <div class="sub" style="color: var(--text-secondary);">Active holdings • Click to inspect</div>
             </div>
             <div class="summary-card">
                 <div class="label">Today's Change</div>
@@ -758,19 +980,8 @@
             <canvas id="performanceChart" style="max-height: 300px;"></canvas>
         </div>
 
-        <!-- Recent Activity -->
-        <div class="section-card" style="margin-bottom: 30px;">
-            <div class="section-header">
-                <span class="section-title"><i class="fas fa-history" style="color: var(--primary); margin-right: 8px;"></i>Recent Activity</span>
-                <a href="transactions.html" style="color: var(--primary); font-size: 13px; text-decoration: none;">View all →</a>
-            </div>
-            <div id="recent-activity" style="color: var(--text-secondary); padding: 15px; font-size: 14px;">
-                Loading recent trades...
-            </div>
-        </div>
-
         <!-- Holdings Table -->
-        <div class="section-card">
+        <div class="section-card" id="holdings-section">
             <div class="section-header">
                 <span class="section-title"><i class="fas fa-layer-group" style="color: var(--primary); margin-right: 8px;"></i>Holdings</span>
                 <span class="badge" id="holdings-badge">0 stocks</span>
@@ -812,8 +1023,83 @@
             <div class="allocation-list" id="allocation-list"></div>
         </div>
 
+        <!-- Recent Activity -->
+        <div class="section-card" style="margin-bottom: 30px;">
+            <div class="section-header">
+                <span class="section-title"><i class="fas fa-history" style="color: var(--primary); margin-right: 8px;"></i>Recent Activity</span>
+                <a href="transactions.html" style="color: var(--primary); font-size: 13px; text-decoration: none;">View all →</a>
+            </div>
+            <div id="recent-activity" style="color: var(--text-secondary); padding: 15px; font-size: 14px;">
+                Loading recent trades...
+            </div>
+        </div>
+
     </div><!-- /main-content -->
 </div><!-- /dashboard-container -->
+
+<div id="stock-detail-modal">
+    <div class="modal-header">
+        <div>
+            <h2 id="modal-symbol"></h2>
+            <div style="font-size: 14px; color: var(--text-secondary);" id="modal-company-name"></div>
+        </div>
+        <span class="close-modal" onclick="closeStockDetailModal()">×</span>
+    </div>
+    <div class="modal-body">
+        <div class="stock-info-header">
+            <div>
+                <div class="price" id="modal-price">$0.00</div>
+                <div class="change" id="modal-change">+$0.00 (0.00%)</div>
+            </div>
+        </div>
+
+        <div class="time-period-tabs">
+            <button onclick="loadStockDetailChartData('1D')" class="active" id="tab-1D">1D</button>
+            <button onclick="loadStockDetailChartData('5D')" id="tab-5D">5D</button>
+            <button onclick="loadStockDetailChartData('1M')" id="tab-1M">1M</button>
+            <button onclick="loadStockDetailChartData('3M')" id="tab-3M">3M</button>
+            <button onclick="loadStockDetailChartData('6M')" id="tab-6M">6M</button>
+            <button onclick="loadStockDetailChartData('1Y')" id="tab-1Y">1Y</button>
+            <button onclick="loadStockDetailChartData('5Y')" id="tab-5Y">5Y</button>
+            <button onclick="loadStockDetailChartData('MAX')" id="tab-MAX">MAX</button>
+        </div>
+
+        <div class="chart-container">
+            <canvas id="stockChart"></canvas>
+            <div class="chart-loading" id="chart-loading" style="display: none;">Loading chart...</div>
+        </div>
+
+        <div class="stock-stats-grid">
+            <div class="stat-item">
+                <div class="label">Shares Owned</div>
+                <div class="value" id="stat-shares-owned">—</div>
+            </div>
+            <div class="stat-item">
+                <div class="label">Avg Cost</div>
+                <div class="value" id="stat-average-cost">—</div>
+            </div>
+            <div class="stat-item">
+                <div class="label">Volume</div>
+                <div class="value" id="stat-volume">—</div>
+            </div>
+            <div class="stat-item">
+                <div class="label">Market Cap</div>
+                <div class="value" id="stat-marketcap">—</div>
+            </div>
+            <div class="stat-item">
+                <div class="label" id="stat-range-label">Day Range</div>
+                <div class="value" id="stat-range">—</div>
+            </div>
+        </div>
+
+        <div class="modal-actions">
+            <button class="btn-close-modal" onclick="closeStockDetailModal()">Close</button>
+            <button class="btn-trade-secondary" onclick="tradeFromModal()">
+                <i class="fas fa-exchange-alt"></i> Trade
+            </button>
+        </div>
+    </div>
+</div>
 
 <!-- Trading Panel -->
 <div class="trading-panel" id="tradingPanel">
@@ -884,6 +1170,10 @@
     let userPortfolio = [];
     let userCash = STARTING_BALANCE;
     let selectedStock = null;
+    let currentModalStock = null;
+    let stockDetailChart = null;
+    let currentStockChartPeriod = '1D';
+    const APP_CACHE_KEYS = ['userCash', 'userPortfolio', 'userTransactions', 'stocksData'];
 
     // ── Init ──
     function initSupabase() {
@@ -967,6 +1257,83 @@
         return names[symbol] || `${symbol} Inc.`;
     }
 
+    function clearClientPortfolioCache({ clearPreferences = false, clearAuthSession = false } = {}) {
+        const keys = [...APP_CACHE_KEYS];
+        if (clearPreferences) keys.push('ese_theme', 'ese_inactivity', 'ese_start_balance');
+
+        keys.forEach(key => {
+            localStorage.removeItem(key);
+            sessionStorage.removeItem(key);
+        });
+
+        if (clearAuthSession) {
+            [localStorage, sessionStorage].forEach(store => {
+                Object.keys(store).forEach(key => {
+                    if (key.includes('nlcdgfpnreyjoomctoht') || key.includes('supabase.auth')) {
+                        store.removeItem(key);
+                    }
+                });
+            });
+        }
+    }
+
+    function renderEmptyRecentActivity(message = 'No recent trades yet') {
+        const activityEl = document.getElementById('recent-activity');
+        if (activityEl) {
+            activityEl.innerHTML = `<div style="color: var(--text-secondary); padding: 15px;">${message}</div>`;
+        }
+    }
+
+    function resetHoldingInsightCards() {
+        document.getElementById('card-today').textContent = '$0.00';
+        document.getElementById('card-today-pct').textContent = '0.00% today';
+        document.getElementById('card-today-pct').className = 'sub';
+        document.getElementById('card-best').textContent = '—';
+        document.getElementById('card-best-return').textContent = 'No active holdings';
+        document.getElementById('card-best-return').className = 'sub';
+        document.getElementById('card-worst').textContent = '—';
+        document.getElementById('card-worst-return').textContent = 'No active holdings';
+        document.getElementById('card-worst-return').className = 'sub';
+    }
+
+    function destroyPortfolioCharts() {
+        if (valueChart) { valueChart.destroy(); valueChart = null; }
+        if (sectorChart) { sectorChart.destroy(); sectorChart = null; }
+        if (performanceChart) { performanceChart.destroy(); performanceChart = null; }
+    }
+
+    function resetPortfolioDashboardUI() {
+        closeTradingPanel();
+        closeStockDetailModal();
+        destroyPortfolioCharts();
+        resetHoldingInsightCards();
+
+        userPortfolio = [];
+        userCash = getStartingBalance();
+        selectedStock = null;
+
+        const holdingsBody = document.getElementById('holdings-body');
+        if (holdingsBody) {
+            holdingsBody.innerHTML = `
+                <tr><td colspan="10">
+                    <div class="empty-state">
+                        <i class="fas fa-wallet"></i>
+                        <p>No holdings yet</p>
+                        <small>Head to <a href="browse-market.html" style="color: var(--primary);">Browse Market</a> to make your first trade!</small>
+                    </div>
+                </td></tr>`;
+        }
+
+        const badge = document.getElementById('holdings-badge');
+        if (badge) badge.textContent = '0 stocks';
+
+        const allocation = document.getElementById('allocation-section');
+        if (allocation) allocation.style.display = 'none';
+
+        updateSummaryCards(0, 0);
+        renderEmptyRecentActivity();
+    }
+
     // ── Supabase Data ──
     async function loadUserDataFromSupabase() {
         if (!supabase) return;
@@ -1038,6 +1405,7 @@
             badge.textContent = '0 stocks';
             document.getElementById('allocation-section').style.display = 'none';
             updateSummaryCards(0, 0);
+            resetHoldingInsightCards();
             return;
         }
 
@@ -1089,6 +1457,8 @@
             const existingRow = body.querySelector(`tr[data-symbol="${holding.stock_symbol}"]`);
 
             if (existingRow && !isFirstLoad) {
+                existingRow.classList.add('holding-row');
+                existingRow.onclick = () => inspectHolding(holding.stock_symbol);
                 // Update only changing cells — no layout shift!
                 existingRow.querySelector('.cell-cur-price').innerHTML =
                     `$${curPrice.toFixed(2)}<div style="font-size:12px;color:${dayColor};">${daySign}${stock.change.toFixed(2)} (${stock.change_percent.toFixed(2)}%)</div>`;
@@ -1100,11 +1470,12 @@
                 pctCell.textContent = `${glSign}${gainPct.toFixed(2)}%`;
                 pctCell.className   = `cell-pct ${glClass}`;
                 const btn = existingRow.querySelector('button');
-                if (btn) btn.setAttribute('onclick', `openTradingPanel('${holding.stock_symbol}', ${curPrice})`);
+                if (btn) btn.setAttribute('onclick', `event.stopPropagation(); openTradingPanel('${holding.stock_symbol}', ${curPrice})`);
             } else {
                 // Build new row
                 const row = document.createElement('tr');
                 row.setAttribute('data-symbol', holding.stock_symbol);
+                row.classList.add('holding-row');
                 row.innerHTML = `
                     <td>
                         <div class="symbol-cell">${holding.stock_symbol}</div>
@@ -1124,11 +1495,12 @@
                         <div class="allocation-bar"><div class="allocation-fill cell-alloc-bar" style="width:0%"></div></div>
                     </td>
                     <td>
-                        <button class="trade-btn" onclick="openTradingPanel('${holding.stock_symbol}', ${curPrice})">
+                        <button class="trade-btn" onclick="event.stopPropagation(); openTradingPanel('${holding.stock_symbol}', ${curPrice})">
                             <i class="fas fa-exchange-alt"></i> Trade
                         </button>
                     </td>
                 `;
+                row.onclick = () => inspectHolding(holding.stock_symbol);
                 body.appendChild(row);
             }
         }
@@ -1205,6 +1577,356 @@
                 </div>
             `;
         }).join('');
+    }
+
+    function handleSummaryCardKeydown(event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            focusHoldingsSection();
+        }
+    }
+
+    function focusHoldingsSection() {
+        const section = document.getElementById('holdings-section');
+        if (!section) return;
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        section.classList.remove('section-pulse');
+        void section.offsetWidth;
+        section.classList.add('section-pulse');
+        setTimeout(() => section.classList.remove('section-pulse'), 1200);
+    }
+
+    async function inspectHolding(symbol) {
+        let stock = stocksData.find(s => s.symbol === symbol);
+        if (!stock) {
+            stock = await fetchYahooStockQuote(symbol);
+            if (stock) stocksData.push(stock);
+        }
+
+        if (!stock) {
+            showToast('Unavailable', `Could not load details for ${symbol}`, 'error');
+            return;
+        }
+
+        showStockDetails(stock);
+    }
+
+    function formatNumber(num) {
+        if (!num) return '0';
+        if (num >= 1000000000) return (num / 1000000000).toFixed(2) + 'B';
+        if (num >= 1000000) return (num / 1000000).toFixed(2) + 'M';
+        if (num >= 1000) return (num / 1000).toFixed(2) + 'K';
+        return num.toLocaleString();
+    }
+
+    function formatMarketCap(cap) {
+        if (!cap) return '0';
+        if (cap >= 1000000000000) return (cap / 1000000000000).toFixed(2) + 'T';
+        if (cap >= 1000000000) return (cap / 1000000000).toFixed(2) + 'B';
+        if (cap >= 1000000) return (cap / 1000000).toFixed(2) + 'M';
+        return cap.toFixed(2);
+    }
+
+    function formatSignedCurrency(value) {
+        const sign = value >= 0 ? '+' : '-';
+        return `${sign}$${Math.abs(value).toFixed(2)}`;
+    }
+
+    function formatSignedPercent(value) {
+        const sign = value >= 0 ? '+' : '-';
+        return `${sign}${Math.abs(value).toFixed(2)}%`;
+    }
+
+    function getRangeLabel(period) {
+        if (period === '1D') return 'Day Range';
+        if (period === 'MAX') return 'All-Time Range';
+        return `${period} Range`;
+    }
+
+    function updateModalSummaryForPeriod(stock, period, chartData, meta = {}) {
+        if (!chartData || chartData.length === 0) return;
+
+        const firstClose = chartData[0]?.close;
+        const lastClose = chartData[chartData.length - 1]?.close;
+        const livePrice = Number.isFinite(stock?.current_price) ? stock.current_price : lastClose;
+        const displayPrice = Number.isFinite(livePrice) ? livePrice : lastClose;
+
+        let basePrice = firstClose;
+        const previousClose = meta.previousClose ?? meta.chartPreviousClose;
+        if (period === '1D' && Number.isFinite(previousClose) && previousClose > 0) {
+            basePrice = previousClose;
+        }
+
+        if (!Number.isFinite(basePrice) || basePrice <= 0 || !Number.isFinite(displayPrice)) {
+            return;
+        }
+
+        const change = displayPrice - basePrice;
+        const changePercent = (change / basePrice) * 100;
+        const changeClass = change >= 0 ? 'positive' : 'negative';
+        const validHighs = chartData.map(point => point.high).filter(value => Number.isFinite(value));
+        const validLows = chartData.map(point => point.low).filter(value => Number.isFinite(value));
+
+        document.getElementById('modal-price').textContent = `$${displayPrice.toFixed(2)}`;
+        document.getElementById('modal-change').textContent = `${formatSignedCurrency(change)} (${formatSignedPercent(changePercent)})`;
+        document.getElementById('modal-change').className = `change ${changeClass}`;
+        document.getElementById('stat-range-label').textContent = getRangeLabel(period);
+
+        if (validHighs.length && validLows.length) {
+            const high = Math.max(...validHighs);
+            const low = Math.min(...validLows);
+            document.getElementById('stat-range').textContent = `$${low.toFixed(2)} - $${high.toFixed(2)}`;
+        } else {
+            document.getElementById('stat-range').textContent = '—';
+        }
+    }
+
+    function formatTooltipTimestamp(timestamp, period) {
+        const date = new Date(timestamp);
+        if (period === '1D' || period === '5D') {
+            return date.toLocaleString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit'
+            });
+        }
+
+        return date.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+        });
+    }
+
+    function setActiveStockTab(period) {
+        document.querySelectorAll('.time-period-tabs button').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        const activeBtn = document.getElementById(`tab-${period}`);
+        if (activeBtn) activeBtn.classList.add('active');
+    }
+
+    function showStockDetails(stock) {
+        currentModalStock = stock;
+
+        const holding = userPortfolio.find(item => item.stock_symbol === stock.symbol);
+        document.getElementById('modal-symbol').textContent = stock.symbol;
+        document.getElementById('modal-company-name').textContent = stock.name;
+        document.getElementById('modal-price').textContent = `$${stock.current_price.toFixed(2)}`;
+        document.getElementById('modal-change').textContent = `${formatSignedCurrency(stock.change)} (${formatSignedPercent(stock.change_percent)})`;
+        document.getElementById('modal-change').className = `change ${stock.change >= 0 ? 'positive' : 'negative'}`;
+        document.getElementById('stat-shares-owned').textContent = holding ? holding.total_shares.toLocaleString() : '0';
+        document.getElementById('stat-average-cost').textContent = holding ? `$${holding.average_price.toFixed(2)}` : '—';
+        document.getElementById('stat-volume').textContent = formatNumber(stock.volume);
+        document.getElementById('stat-marketcap').textContent = stock.market_cap > 0 ? '$' + formatMarketCap(stock.market_cap) : 'N/A';
+        document.getElementById('stat-range').textContent = '—';
+
+        setActiveStockTab('1D');
+        currentStockChartPeriod = '1D';
+        document.getElementById('stock-detail-modal').classList.add('active');
+        document.getElementById('modalOverlay').classList.add('active');
+        document.body.style.overflow = 'hidden';
+        loadStockDetailChartData('1D');
+    }
+
+    function closeStockDetailModal() {
+        document.getElementById('stock-detail-modal').classList.remove('active');
+        document.getElementById('modalOverlay').classList.remove('active');
+        document.body.style.overflow = '';
+        currentModalStock = null;
+
+        if (stockDetailChart) {
+            stockDetailChart.destroy();
+            stockDetailChart = null;
+        }
+    }
+
+    function tradeFromModal() {
+        if (!currentModalStock) return;
+        const { symbol, current_price: price } = currentModalStock;
+        closeStockDetailModal();
+        openTradingPanel(symbol, price);
+    }
+
+    async function loadStockDetailChartData(period) {
+        if (!currentModalStock) return;
+
+        currentStockChartPeriod = period;
+        setActiveStockTab(period);
+        document.getElementById('chart-loading').style.display = 'block';
+        document.getElementById('chart-loading').textContent = 'Loading chart...';
+        document.getElementById('chart-loading').style.color = 'var(--text-secondary)';
+
+        if (typeof Chart === 'undefined') {
+            await new Promise(resolve => {
+                const checkChart = setInterval(() => {
+                    if (typeof Chart !== 'undefined') {
+                        clearInterval(checkChart);
+                        resolve();
+                    }
+                }, 100);
+            });
+        }
+
+        try {
+            const { points, meta } = await fetchHistoricalData(currentModalStock.symbol, period);
+            updateModalSummaryForPeriod(currentModalStock, period, points, meta);
+            renderStockDetailChart(points, period);
+            document.getElementById('chart-loading').style.display = 'none';
+        } catch (error) {
+            console.error('Error loading stock chart:', error);
+            document.getElementById('chart-loading').textContent = 'Failed to load chart data';
+            document.getElementById('chart-loading').style.color = 'var(--red)';
+        }
+    }
+
+    async function fetchHistoricalData(symbol, period) {
+        const periodMap = {
+            '1D': { range: '1d', interval: '5m' },
+            '5D': { range: '5d', interval: '15m' },
+            '1M': { range: '1mo', interval: '1h' },
+            '3M': { range: '3mo', interval: '1d' },
+            '6M': { range: '6mo', interval: '1d' },
+            '1Y': { range: '1y', interval: '1d' },
+            '5Y': { range: '5y', interval: '1wk' },
+            'MAX': { range: 'max', interval: '1mo' }
+        };
+
+        const { range, interval } = periodMap[period];
+        const yahooSymbol = symbol.replace('.', '-');
+        const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=${interval}&range=${range}`;
+        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`;
+        const response = await fetch(proxyUrl);
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        if (!data.chart?.result?.length) {
+            throw new Error('No chart data returned');
+        }
+
+        const result = data.chart.result[0];
+        const timestamps = result.timestamp || [];
+        const quotes = result.indicators?.quote?.[0] || {};
+        const closes = quotes.close || [];
+        const highs = quotes.high || [];
+        const lows = quotes.low || [];
+
+        return {
+            points: timestamps.map((ts, i) => ({
+                timestamp: ts * 1000,
+                close: closes[i],
+                high: highs[i],
+                low: lows[i]
+            })).filter(point => point.close !== null && point.close !== undefined),
+            meta: result.meta || {}
+        };
+    }
+
+    function renderStockDetailChart(data, period) {
+        if (!data || data.length === 0) {
+            document.getElementById('chart-loading').textContent = 'No data available';
+            document.getElementById('chart-loading').style.display = 'block';
+            return;
+        }
+
+        const ctx = document.getElementById('stockChart');
+        if (!ctx) return;
+
+        if (stockDetailChart) {
+            stockDetailChart.destroy();
+            stockDetailChart = null;
+        }
+
+        const labels = data.map(point => {
+            const date = new Date(point.timestamp);
+            if (period === '1D') {
+                return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            }
+            if (period === '5D') {
+                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit' });
+            }
+            if (period === '1M' || period === '3M') {
+                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            }
+            if (period === '6M' || period === '1Y') {
+                return date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+            }
+            return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+        });
+
+        const prices = data.map(point => point.close);
+        const firstPrice = prices[0];
+        const lastPrice = prices[prices.length - 1];
+        const isPositive = lastPrice >= firstPrice;
+        const lineColor = isPositive ? '#16c784' : '#ea3943';
+
+        stockDetailChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Price',
+                    data: prices,
+                    borderColor: lineColor,
+                    backgroundColor: isPositive ? 'rgba(22, 199, 132, 0.1)' : 'rgba(234, 57, 67, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0,
+                    pointRadius: 0,
+                    pointHoverRadius: 4,
+                    pointHoverBackgroundColor: lineColor
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(30, 30, 30, 0.95)',
+                        titleColor: '#e0e0e0',
+                        bodyColor: '#e0e0e0',
+                        borderColor: '#2c2c2c',
+                        borderWidth: 1,
+                        padding: 12,
+                        displayColors: false,
+                        callbacks: {
+                            title: (context) => {
+                                const point = data[context[0].dataIndex];
+                                return point ? formatTooltipTimestamp(point.timestamp, period) : context[0].label;
+                            },
+                            label: (context) => `Price: $${context.parsed.y.toFixed(2)}`
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        ticks: {
+                            color: '#a0a0a0',
+                            callback: (value) => `$${Number(value).toFixed(2)}`
+                        },
+                        grid: { color: '#2c2c2c' }
+                    },
+                    x: {
+                        ticks: {
+                            color: '#a0a0a0',
+                            maxRotation: 0,
+                            autoSkip: true,
+                            maxTicksLimit: 8
+                        },
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
     }
 
     // ── Trading Panel ──
@@ -1367,6 +2089,9 @@
             closeTradingPanel();
             await loadUserDataFromSupabase();
             await displayPortfolio();
+            await updateAdvancedMetrics();
+            await renderCharts();
+            await savePortfolioSnapshot();
 
         } catch (error) {
             console.error('Trade error:', error);
@@ -1635,7 +2360,8 @@
     async function updateAdvancedMetrics() {
         // Today's P&L
         const todayChange = calculateTodaysChange();
-        const todayPct = userCash > 0 ? (todayChange / (userCash + getTotalPortfolioValue())) * 100 : 0;
+        const portfolioBase = userCash + getTotalPortfolioValue();
+        const todayPct = portfolioBase > 0 ? (todayChange / portfolioBase) * 100 : 0;
         document.getElementById('card-today').textContent = `${todayChange >= 0 ? '+' : ''}$${todayChange.toFixed(2)}`;
         document.getElementById('card-today-pct').textContent = `${todayChange >= 0 ? '+' : ''}${todayPct.toFixed(2)}% today`;
         document.getElementById('card-today-pct').className = `sub ${todayChange >= 0 ? 'positive' : 'negative'}`;
@@ -1646,6 +2372,10 @@
             document.getElementById('card-best').textContent = best.symbol;
             document.getElementById('card-best-return').textContent = `+${best.returnPct.toFixed(2)}% return`;
             document.getElementById('card-best-return').className = 'sub positive';
+        } else {
+            document.getElementById('card-best').textContent = '—';
+            document.getElementById('card-best-return').textContent = 'No active holdings';
+            document.getElementById('card-best-return').className = 'sub';
         }
         if (worst && worst.returnPct < 0) {
             document.getElementById('card-worst').textContent = worst.symbol;
@@ -1655,6 +2385,10 @@
             document.getElementById('card-worst').textContent = worst.symbol;
             document.getElementById('card-worst-return').textContent = `+${worst.returnPct.toFixed(2)}% return`;
             document.getElementById('card-worst-return').className = 'sub positive';
+        } else {
+            document.getElementById('card-worst').textContent = '—';
+            document.getElementById('card-worst-return').textContent = 'No active holdings';
+            document.getElementById('card-worst-return').className = 'sub';
         }
 
         // Win rate
@@ -1983,6 +2717,13 @@
 
     // ── Boot ──
     window.onload = async function () {
+        const wasReset = new URLSearchParams(window.location.search).get('reset') === '1';
+        if (wasReset) {
+            history.replaceState({}, '', 'portfolio.html');
+            clearClientPortfolioCache();
+            resetPortfolioDashboardUI();
+        }
+
         const ready = () => new Promise(resolve => {
             if (initSupabase()) return resolve();
             let attempts = 0;
@@ -1999,20 +2740,7 @@
         await loadUserDataFromSupabase();
         await displayPortfolio();
 
-        // If coming from a portfolio reset, clear all UI immediately before any async fetch
-        const wasReset = new URLSearchParams(window.location.search).get('reset') === '1';
         if (wasReset) {
-            history.replaceState({}, '', 'portfolio.html');
-
-            // Wipe recent-activity card synchronously so there's no flash of old data
-            const activityEl = document.getElementById('recent-activity');
-            if (activityEl) activityEl.innerHTML = '<div style="color:var(--text-secondary);padding:15px;">No recent trades yet.</div>';
-
-            // Destroy charts so renderCharts() re-draws from fresh (empty) Supabase data
-            if (typeof valueChart !== 'undefined' && valueChart) { valueChart.destroy(); valueChart = null; }
-            if (typeof sectorChart !== 'undefined' && sectorChart) { sectorChart.destroy(); sectorChart = null; }
-            if (typeof performanceChart !== 'undefined' && performanceChart) { performanceChart.destroy(); performanceChart = null; }
-
             showToast('Portfolio Reset Complete', `Your portfolio has been reset to ${fmtMoney(getStartingBalance())}. Fresh start!`, 'success', 6000);
             // Don't save a snapshot — the data was just wiped
         } else {
@@ -2028,6 +2756,11 @@
 
     document.getElementById('trade-quantity').addEventListener('input', calculateEstimatedTotal);
     document.getElementById('order-type').addEventListener('change', updateExecuteButton);
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            closeStockDetailModal();
+        }
+    });
     // ── Sidebar Profile Loader ──
     function updateSidebarProfile(user) {
         if (!user) return;
