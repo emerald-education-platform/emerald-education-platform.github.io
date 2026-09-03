@@ -370,6 +370,7 @@
     ></script>
     <!-- Add this inside the <head> tags, after your other scripts -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
+    <script src="../assets/js/market-data.js"></script>
 </head>
 <body>
     <!-- HEADER -->
@@ -643,6 +644,80 @@
 
             // Make logout available globally
             window.logout = logout;
+            function formatEmeralds(value) {
+                return `${value.toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                })} Emeralds`;
+            }
+
+            async function refreshDashboardPortfolioValue(userId) {
+                const valueElement = document.getElementById('dashboard-portfolio-value');
+                const statusElement = document.getElementById('dashboard-value-status');
+                if (!valueElement) return;
+
+                try {
+                    const [profileResult, holdingsResult] = await Promise.all([
+                        window.emeraldSupabase
+                            .from('user_profiles')
+                            .select('cash_balance')
+                            .eq('id', userId)
+                            .maybeSingle(),
+                        window.emeraldSupabase
+                            .from('portfolio')
+                            .select('stock_symbol,total_shares,average_price')
+                            .eq('user_id', userId)
+                    ]);
+
+                    if (profileResult.error) throw profileResult.error;
+                    if (holdingsResult.error) throw holdingsResult.error;
+
+                    const rawCash = Number(profileResult.data?.cash_balance);
+                    const cash = Number.isFinite(rawCash) ? rawCash : 10000;
+                    const holdings = holdingsResult.data || [];
+                    let investedValue = 0;
+                    let usedLivePrices = holdings.length === 0;
+
+                    if (holdings.length > 0 && window.EmeraldMarketData) {
+                        try {
+                            const charts = await window.EmeraldMarketData.fetchCharts(
+                                holdings.map(holding => holding.stock_symbol),
+                                { interval: '1d', range: '5d' }
+                            );
+
+                            investedValue = holdings.reduce((total, holding) => {
+                                const symbol = holding.stock_symbol.toUpperCase().replaceAll('.', '-');
+                                const result = charts[symbol]?.chart?.result?.[0];
+                                const closes = result?.indicators?.quote?.[0]?.close?.filter(Number.isFinite) || [];
+                                const livePrice = Number(result?.meta?.regularMarketPrice ?? closes.at(-1));
+                                const costBasis = Number(holding.average_price) || 0;
+                                const price = Number.isFinite(livePrice) && livePrice > 0 ? livePrice : costBasis;
+                                return total + (Number(holding.total_shares) || 0) * price;
+                            }, 0);
+                            usedLivePrices = true;
+                        } catch (marketError) {
+                            console.warn('Live dashboard valuation unavailable; using cost basis:', marketError);
+                        }
+                    }
+
+                    if (!usedLivePrices) {
+                        investedValue = holdings.reduce((total, holding) =>
+                            total + (Number(holding.total_shares) || 0) * (Number(holding.average_price) || 0), 0);
+                    }
+
+                    valueElement.textContent = formatEmeralds(cash + investedValue);
+                    if (statusElement) {
+                        statusElement.textContent = holdings.length === 0
+                            ? 'Available cash'
+                            : usedLivePrices ? 'Cash + live holdings' : 'Cash + holdings at cost';
+                    }
+                } catch (error) {
+                    console.error('Could not load dashboard portfolio value:', error);
+                    valueElement.textContent = 'Unavailable';
+                    if (statusElement) statusElement.textContent = 'Could not load account value';
+                }
+            }
+
             function transformToDashboard(user) {
                 console.log('Transforming page to dashboard for:', user);
                 
@@ -671,8 +746,9 @@
                             <p>Your Emerald Exchange Dashboard</p>
                             <div style="margin-top: 2rem;">
                                 <div style="background: white; padding: 2rem; border-radius: 8px; display: inline-block;">
-                                    <h3 style="color: var(--gray); margin-bottom: 0.5rem;">Portfolio Value</h3>
-                                    <p style="font-size: 2.5rem; font-weight: bold; color: var(--primary);">1,250 Emeralds</p>
+                                    <h3 style="color: var(--gray); margin-bottom: 0.5rem;">Total Account Value</h3>
+                                    <p id="dashboard-portfolio-value" style="font-size: 2.5rem; font-weight: bold; color: var(--primary);">Loading…</p>
+                                    <p id="dashboard-value-status" style="color: var(--gray); font-size: 0.85rem; margin: 0.35rem 0 0;">Loading your balance</p>
                                 </div>
                             </div>
                             <div class="hero-btns" style="margin-top: 2rem;">
@@ -715,6 +791,9 @@
 
                 // 4. Swap nav button to Log Out
                 updateNavAuthBtn(true);
+
+                // Load cash and holdings from Supabase instead of showing a hard-coded value.
+                refreshDashboardPortfolioValue(user.id);
             }
 
             function showLoginUI() {

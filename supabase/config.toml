@@ -2,3 +2,8 @@ project_id = "nlcdgfpnreyjoomctoht"
 
 [functions.market-data]
 verify_jwt = false
+
+[functions.account-actions]
+# Authentication is verified inside the function with auth.getUser so it works
+# with both legacy and current Supabase signing keys.
+verify_jwt = false

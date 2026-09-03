@@ -189,6 +189,15 @@
         .btn-secondary:hover {
             background-color: rgba(16, 185, 129, 0.05);
         }
+        .btn-unavailable,
+        .btn-unavailable:hover {
+            background-color: #e5e7eb;
+            border-color: #d1d5db;
+            color: #6b7280;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
         /* Style for the gap/spacer between button rows */
         .btn-gap {
             width: 100%; /* Makes the spacer take the full width */
@@ -430,8 +439,8 @@
                     <h1>The Education Platform For Financial Literacy</h1>
                     <p>Emerald Educational Platform provides a free, simple, and encouraging platform for students of all ages. Built on cooperation, driven by innovation.</p>
                     <div class="hero-btns">
-                        <a href="teacherside" class="btn btn-secondary">For Teachers</a>
-                        <a href="balance" class="btn btn-secondary">Student Portal</a>
+                        <button type="button" class="btn btn-secondary btn-unavailable" disabled aria-disabled="true" title="Teacher portal is currently unavailable">Teacher Portal — Unavailable</button>
+                        <button type="button" class="btn btn-secondary btn-unavailable" disabled aria-disabled="true" title="Student portal is currently unavailable">Student Portal — Unavailable</button>
                         
                         <!-- The Gap/Spacer -->
                         <div class="btn-gap"></div>
