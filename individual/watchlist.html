@@ -7,6 +7,7 @@
     <link rel="icon" href="ESElogoIcon.png" type="image/png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js" defer></script>
+    <script src="../assets/js/market-data.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
     <style>
         :root {
@@ -1141,16 +1142,16 @@
     }
 
     // ── Fetch Stock from Yahoo Finance ──
-    async function fetchStockData(symbol) {
+    async function fetchStockData(symbol, prefetchedData) {
         try {
-            const yahooSymbol = symbol.replace('.', '-');
-            const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=1mo`;
-            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`;
+            const data = prefetchedData === undefined
+                ? await window.EmeraldMarketData.fetchChart(symbol, {
+                    interval: '1d',
+                    range: '1mo'
+                })
+                : prefetchedData;
 
-            const response = await fetch(proxyUrl);
-            if (!response.ok) throw new Error('Failed to fetch');
-
-            const data = await response.json();
+            if (!data) return null;
             if (!data.chart?.result?.length) throw new Error('No data');
 
             const result = data.chart.result[0];
@@ -1220,13 +1221,16 @@
                 return;
             }
 
-            // Fetch live prices for all watchlist stocks
-            const stockPromises = watchlist.map(item => fetchStockData(item.stock_symbol));
-            const results = await Promise.allSettled(stockPromises);
-
-            watchlistStocks = results
-                .filter(result => result.status === 'fulfilled' && result.value !== null)
-                .map(result => result.value);
+            // Fetch live prices for all watchlist stocks in one invocation.
+            const symbols = watchlist.map(item => item.stock_symbol);
+            const charts = await window.EmeraldMarketData.fetchCharts(symbols, {
+                interval: '1d',
+                range: '1mo'
+            });
+            watchlistStocks = (await Promise.all(symbols.map(symbol => {
+                const normalizedSymbol = symbol.toUpperCase().replaceAll('.', '-');
+                return fetchStockData(symbol, charts[normalizedSymbol] || null);
+            }))).filter(Boolean);
 
             displayWatchlist(watchlistStocks);
             document.getElementById('watchlist-count').textContent = watchlistStocks.length;
@@ -1719,14 +1723,7 @@
         };
 
         const { range, interval } = periodMap[period];
-        const yahooSymbol = symbol.replace('.', '-');
-        const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=${interval}&range=${range}`;
-        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`;
-
-        const response = await fetch(proxyUrl);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-        const data = await response.json();
+        const data = await window.EmeraldMarketData.fetchChart(symbol, { interval, range });
         if (!data.chart?.result?.length) throw new Error('No data returned');
 
         const result = data.chart.result[0];

@@ -7,6 +7,7 @@
     <link rel="icon" href="ESElogoIcon.png" type="image/png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js" defer></script>
+    <script src="../assets/js/market-data.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
     <style>
         :root {
@@ -1206,14 +1207,30 @@
     }
 
     // ── Yahoo Finance ──
-    async function fetchYahooStockQuote(symbol) {
+    async function fetchYahooStockQuotes(symbols) {
+        if (symbols.length === 0) return [];
+
+        const charts = await window.EmeraldMarketData.fetchCharts(symbols, {
+            interval: '1d',
+            range: '1mo'
+        });
+
+        return Promise.all(symbols.map(symbol => {
+            const normalizedSymbol = symbol.toUpperCase().replaceAll('.', '-');
+            return fetchYahooStockQuote(symbol, charts[normalizedSymbol] || null);
+        }));
+    }
+
+    async function fetchYahooStockQuote(symbol, prefetchedData) {
         try {
-            const yahooSymbol = symbol.replace('.', '-');
-            const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=1mo`;
-            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`;
-            const response = await fetch(proxyUrl);
-            if (!response.ok) return null;
-            const data = await response.json();
+            const data = prefetchedData === undefined
+                ? await window.EmeraldMarketData.fetchChart(symbol, {
+                    interval: '1d',
+                    range: '1mo'
+                })
+                : prefetchedData;
+
+            if (!data) return null;
             if (!data.chart?.result?.length) return null;
             const result = data.chart.result[0];
             const quote = result.meta;
@@ -1372,13 +1389,12 @@
                         total_shares: h.total_shares,
                         average_price: parseFloat(h.average_price)
                     }));
-                    // Fetch live prices for each holding
-                    for (const h of userPortfolio) {
-                        if (!stocksData.find(s => s.symbol === h.stock_symbol)) {
-                            const sd = await fetchYahooStockQuote(h.stock_symbol);
-                            if (sd) stocksData.push(sd);
-                        }
-                    }
+                    // Fetch missing live prices in one invocation.
+                    const missingSymbols = userPortfolio
+                        .map(holding => holding.stock_symbol)
+                        .filter(symbol => !stocksData.find(stock => stock.symbol === symbol));
+                    const quotes = await fetchYahooStockQuotes(missingSymbols);
+                    stocksData.push(...quotes.filter(Boolean));
                 } else {
                     userPortfolio = [];
                 }
@@ -1794,16 +1810,7 @@
         };
 
         const { range, interval } = periodMap[period];
-        const yahooSymbol = symbol.replace('.', '-');
-        const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=${interval}&range=${range}`;
-        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`;
-        const response = await fetch(proxyUrl);
-
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        const data = await response.json();
+        const data = await window.EmeraldMarketData.fetchChart(symbol, { interval, range });
         if (!data.chart?.result?.length) {
             throw new Error('No chart data returned');
         }
@@ -2115,6 +2122,18 @@
     async function silentRefresh() {
         try {
             await loadUserDataFromSupabase();
+
+            const symbols = userPortfolio.map(holding => holding.stock_symbol);
+            const refreshedQuotes = await fetchYahooStockQuotes(symbols);
+            refreshedQuotes.filter(Boolean).forEach(stock => {
+                const existingIndex = stocksData.findIndex(existing => existing.symbol === stock.symbol);
+                if (existingIndex >= 0) {
+                    stocksData[existingIndex] = stock;
+                } else {
+                    stocksData.push(stock);
+                }
+            });
+
             await displayPortfolio();
             await savePortfolioSnapshot();
             await updateAdvancedMetrics();

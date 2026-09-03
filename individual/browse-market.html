@@ -7,6 +7,7 @@
     <link rel="icon" href="ESElogoIcon.png" type="image/png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js" defer></script>
+    <script src="../assets/js/market-data.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
     <style>
         :root {
@@ -2092,21 +2093,11 @@
             };
 
             const { range, interval } = periodMap[period];
-            const yahooSymbol = symbol.replace('.', '-');
-            const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=${interval}&range=${range}`;
-            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`;
 
             console.log(`Fetching data from Yahoo Finance: ${symbol}, period: ${period} (${range})`);
 
             try {
-                const response = await fetch(proxyUrl);
-                console.log(`Response status: ${response.status}`);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                
-                const data = await response.json();
+                const data = await window.EmeraldMarketData.fetchChart(symbol, { interval, range });
                 console.log('Yahoo Finance response received:', data);
                 
                 if (!data.chart?.result?.length) {
@@ -2287,17 +2278,16 @@
                 
                 console.log(`🔄 Auto-refreshing ${allSymbols.length} stocks...`);
                 
-                // Fetch fresh data for all loaded stocks in parallel
-                const stockPromises = allSymbols.map(symbol => fetchYahooStockQuote(symbol));
-                const results = await Promise.allSettled(stockPromises);
-                
+                // Fetch fresh data for all loaded stocks in one Edge Function invocation.
+                const refreshedStocks = await fetchYahooStockQuotes(allSymbols);
+
                 // Update stocksData with fresh data
-                results.forEach((result, index) => {
-                    if (result.status === 'fulfilled' && result.value !== null) {
+                refreshedStocks.forEach((stock, index) => {
+                    if (stock) {
                         const symbol = allSymbols[index];
                         const existingIndex = stocksData.findIndex(s => s.symbol === symbol);
                         if (existingIndex >= 0) {
-                            stocksData[existingIndex] = result.value;
+                            stocksData[existingIndex] = stock;
                         }
                     }
                 });
@@ -2326,7 +2316,7 @@
         }
         
         // Start auto-refresh
-        // Yahoo Finance (via corsproxy.io) has no strict public rate limit
+        // Refresh live market data once per minute through the batched Edge Function.
         // Safe refresh intervals: 15-30s during market hours, 60s after hours
         // Current setting: 60 seconds (very conservative, can safely reduce to 30s or even 15s)
         function startAutoRefresh() {
@@ -2546,14 +2536,8 @@
                 
                 console.log(`Fetching data for ${TRACKED_SYMBOLS.length} stocks...`);
                 
-                // Fetch all stocks in parallel (Yahoo Finance allows this!)
-                const stockPromises = TRACKED_SYMBOLS.map(symbol => fetchYahooStockQuote(symbol));
-                const results = await Promise.allSettled(stockPromises);
-                
-                // Filter successful results
-                const stocks = results
-                    .filter(result => result.status === 'fulfilled' && result.value !== null)
-                    .map(result => result.value);
+                // Fetch all tracked symbols in one Edge Function invocation.
+                const stocks = (await fetchYahooStockQuotes(TRACKED_SYMBOLS)).filter(Boolean);
                 
                 console.log(`Successfully loaded ${stocks.length} out of ${TRACKED_SYMBOLS.length} stocks`);
                 
@@ -2589,25 +2573,30 @@
         }
         
         // Fetch individual stock quote from Yahoo Finance
-        async function fetchYahooStockQuote(symbol) {
+        async function fetchYahooStockQuotes(symbols) {
+            const charts = await window.EmeraldMarketData.fetchCharts(symbols, {
+                interval: '1d',
+                range: '1mo'
+            });
+
+            return Promise.all(symbols.map(symbol => {
+                const normalizedSymbol = symbol.toUpperCase().replaceAll('.', '-');
+                return fetchYahooStockQuote(symbol, charts[normalizedSymbol] || null);
+            }));
+        }
+
+        async function fetchYahooStockQuote(symbol, prefetchedData) {
             try {
-                // Convert symbol format for Yahoo Finance (BRK.B -> BRK-B)
-                const yahooSymbol = symbol.replace('.', '-');
-                
-                console.log(`Fetching quote for: ${symbol} (Yahoo format: ${yahooSymbol})`);
-                
-                // Fetch 1 month of data to get both current quote and historical data for sparkline
-                const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=1mo`;
-                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`;
-                
-                const response = await fetch(proxyUrl);
-                
-                if (!response.ok) {
-                    console.error(`HTTP error for ${symbol}: ${response.status}`);
-                    return null;
-                }
-                
-                const data = await response.json();
+                console.log(`Fetching quote for: ${symbol}`);
+
+                const data = prefetchedData === undefined
+                    ? await window.EmeraldMarketData.fetchChart(symbol, {
+                        interval: '1d',
+                        range: '1mo'
+                    })
+                    : prefetchedData;
+
+                if (!data) return null;
                 
                 console.log(`Response for ${symbol}:`, data.chart?.result ? 'Success' : 'No data');
                 
@@ -2667,20 +2656,10 @@
         // Fetch historical price data for sparkline
         async function fetchStockHistory(symbol) {
             try {
-                const yahooSymbol = symbol.replace('.', '-');
-                
-                // Fetch 1 month of daily data
-                const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=1mo`;
-                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`;
-                
-                const response = await fetch(proxyUrl);
-                
-                if (!response.ok) {
-                    console.error(`HTTP error for ${symbol} history: ${response.status}`);
-                    return null;
-                }
-                
-                const data = await response.json();
+                const data = await window.EmeraldMarketData.fetchChart(symbol, {
+                    interval: '1d',
+                    range: '1mo'
+                });
                 
                 if (!data.chart || !data.chart.result || data.chart.result.length === 0) {
                     return null;
@@ -2811,7 +2790,7 @@
                 demoNotice = document.createElement('div');
                 demoNotice.id = 'demo-notice';
                 demoNotice.style.cssText = 'padding: 12px; background: rgba(234, 57, 67, 0.1); border: 1px solid var(--red); border-radius: 8px; margin-bottom: 15px; text-align: center; color: var(--red);';
-                demoNotice.innerHTML = '<strong>⚠️ Demo Mode:</strong> Yahoo Finance API failed to load. Showing sample data. Check your internet connection.';
+                demoNotice.innerHTML = '<strong>⚠️ Demo Mode:</strong> Live market data is temporarily unavailable. Showing sample data.';
                 tableContainer.parentNode.insertBefore(demoNotice, tableContainer);
             }
             

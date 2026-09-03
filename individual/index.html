@@ -482,8 +482,8 @@
     </footer>
     <!-- Then replace your entire custom script block with this: -->
     <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
-        // 1. WAIT FOR WINDOW TO BE READY
-        document.addEventListener('DOMContentLoaded', function() {
+        // Initialize authentication once the page is ready.
+        document.addEventListener('DOMContentLoaded', async function() {
             console.log('DOM loaded, checking for Supabase...');
             
             // 2. CHECK IF supabase GLOBAL EXISTS (from CDN)
@@ -509,45 +509,32 @@
                 return;
             }
             
-            // After creating window.emeraldSupabase, add this:
             async function handleOAuthRedirect() {
-                // Check if we're returning from OAuth with a hash in the URL
                 const hash = window.location.hash;
-                
-                if (hash && hash.includes('access_token') || hash.includes('error')) {
-                    console.log('Detected OAuth redirect with hash:', hash.substring(0, 50) + '...');
-                    
-                    try {
-                        // Let Supabase parse the hash and establish the session
-                        const { data, error } = await window.emeraldSupabase.auth.getSessionFromUrl();
-                        
-                        if (error) throw error;
-                        
-                        console.log('OAuth redirect handled successfully!');
-                        
-                        // Clear the hash from the URL (cleaner browsing)
-                        window.location.hash = '';
-                        
-                        // Now check auth again
-                        checkAuthAndRedirect();
-                        
-                    } catch (error) {
-                        console.error('Failed to handle OAuth redirect:', error);
-                        alert('Authentication error: ' + error.message);
+                if (!hash) return;
+
+                const params = new URLSearchParams(hash.slice(1));
+                const authError = params.get('error_description') || params.get('error');
+
+                if (authError) {
+                    console.error('OAuth redirect error:', authError);
+                    alert('Authentication error: ' + authError);
+                    history.replaceState({}, document.title, window.location.pathname + window.location.search);
+                    return;
+                }
+
+                // supabase-js detects OAuth tokens in the URL automatically. Wait for
+                // that processing to finish, then remove the tokens from browser history.
+                if (params.has('access_token') || params.has('refresh_token')) {
+                    const { data: { session }, error } = await window.emeraldSupabase.auth.getSession();
+                    if (error) throw error;
+                    if (session) {
+                        console.log('OAuth redirect handled successfully.');
+                        history.replaceState({}, document.title, window.location.pathname + window.location.search);
                     }
                 }
             }
 
-            // Then update your DOMContentLoaded event to also call this:
-            document.addEventListener('DOMContentLoaded', function() {
-                console.log('DOM loaded, checking auth state...');
-                
-                // First, handle any OAuth redirect
-                handleOAuthRedirect().then(() => {
-                    // Then check general auth state
-                    checkAuthAndRedirect();
-                });
-            });
             // 4. SETUP LOGIN FUNCTION
             window.signInWithGoogle = async function() {
                 console.log('Google login clicked');
@@ -584,10 +571,6 @@
                 console.log('Login button activated.');
             }
             
-            // 6. CHECK EXISTING SESSION
-            checkAuthAndRedirect();
-            
-            // Replace your current checkAuth() function with this:
             async function checkAuthAndRedirect() {
                 if (!window.emeraldSupabase) return;
                 
@@ -617,20 +600,13 @@
                 }
             }
 
-            // Call this on page load AND after OAuth redirect
-            document.addEventListener('DOMContentLoaded', function() {
-                console.log('DOM loaded, checking auth state...');
-                // Check immediately
-                checkAuthAndRedirect();
-                
-                // Also check when page becomes visible (useful for OAuth redirect back)
-                document.addEventListener('visibilitychange', function() {
-                    if (!document.hidden) {
-                        console.log('Page became visible, re-checking auth...');
-                        checkAuthAndRedirect();
-                    }
-                });
+            // Re-check when the browser restores this tab from its back/forward cache.
+            document.addEventListener('visibilitychange', function() {
+                if (!document.hidden) {
+                    checkAuthAndRedirect();
+                }
             });
+
             async function logout() {
                 if (!window.emeraldSupabase) return;
                                 
@@ -767,7 +743,7 @@
                 
                 // Listen for all auth state changes
                 const { data: { subscription } } = window.emeraldSupabase.auth.onAuthStateChange(
-                    async (event, session) => {
+                    (event, session) => {
                         console.log('Supabase Auth event:', event, 'Session present?', !!session);
                         
                         if (session) {
@@ -802,17 +778,17 @@
                 }
             }
 
-            // Update page load initialization
-            document.addEventListener('DOMContentLoaded', function() {
-                console.log('DOM loaded, setting up auth...');
+            setupAuthListener();
 
-                // 1. Set up the auth state listener
-                setupAuthListener();
+            try {
+                await handleOAuthRedirect();
+            } catch (error) {
+                console.error('Failed to finish OAuth redirect:', error);
+                alert('Authentication error: ' + error.message);
+            }
 
-                // 2. Check existing session immediately
-                checkAuthAndRedirect();
-            });
-        })();
+            await checkAuthAndRedirect();
+        });
         </script>
     </body>
 </html>
