@@ -53,7 +53,7 @@ Deno.serve(async (request: Request) => {
     const authorization = request.headers.get('authorization');
     const accessToken = authorization?.match(/^Bearer\s+(.+)$/i)?.[1];
     if (!accessToken) {
-        return jsonResponse(request, { error: 'You must be signed in to perform this action' }, 401);
+        return jsonResponse(request, { error: 'You must be signed in to reset a portfolio' }, 401);
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -61,7 +61,7 @@ Deno.serve(async (request: Request) => {
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     if (!supabaseUrl || !anonKey || !serviceRoleKey) {
         console.error('Missing required Supabase function environment variables');
-        return jsonResponse(request, { error: 'Account service is not configured' }, 500);
+        return jsonResponse(request, { error: 'Portfolio reset service is not configured' }, 500);
     }
 
     const authClient = createClient(supabaseUrl, anonKey, {
@@ -72,44 +72,61 @@ Deno.serve(async (request: Request) => {
         return jsonResponse(request, { error: 'Your session is invalid or has expired' }, 401);
     }
 
-    let body: { action?: unknown };
+    let body: { startingBalance?: unknown };
     try {
         body = await request.json();
     } catch {
         return jsonResponse(request, { error: 'Request body must be valid JSON' }, 400);
     }
 
-    const action = body.action;
-    if (action !== 'delete') {
-        return jsonResponse(request, { error: 'Action must be delete' }, 400);
+    const requestedBalance = Number(body.startingBalance);
+    if (!Number.isFinite(requestedBalance) || requestedBalance < 1000 || requestedBalance > 1_000_000) {
+        return jsonResponse(request, { error: 'Starting balance must be between 1,000 and 1,000,000' }, 400);
     }
+    const startingBalance = Math.round(requestedBalance);
 
     const admin = createClient(supabaseUrl, serviceRoleKey, {
         auth: { autoRefreshToken: false, persistSession: false }
     });
 
-    // These are the only user-owned tables used by the application. A table is
-    // allowed to be absent so deployments that predate portfolio history still work.
-    const userTables = ['portfolio_history', 'transactions', 'portfolio', 'watchlist'];
-    for (const table of userTables) {
+    for (const table of ['portfolio_history', 'transactions', 'portfolio', 'watchlist']) {
         const { error } = await admin.from(table).delete().eq('user_id', user.id);
         if (error && !isMissingRelationError(error)) {
             console.error(`Failed to clear ${table} for ${user.id}:`, error);
-            return jsonResponse(request, { error: `Could not clear ${table}. The operation stopped before completion.` }, 500);
+            return jsonResponse(request, {
+                error: `Could not clear ${table}. The reset stopped before completion.`
+            }, 500);
         }
     }
 
-    const { error: profileError } = await admin.from('user_profiles').delete().eq('id', user.id);
-    if (profileError && !isMissingRelationError(profileError)) {
-        console.error(`Failed to delete profile for ${user.id}:`, profileError);
-        return jsonResponse(request, { error: 'Could not delete the account profile' }, 500);
+    const { data: profile, error: updateError } = await admin
+        .from('user_profiles')
+        .update({ cash_balance: startingBalance })
+        .eq('id', user.id)
+        .select('id')
+        .maybeSingle();
+
+    if (updateError) {
+        console.error(`Failed to reset balance for ${user.id}:`, updateError);
+        return jsonResponse(request, {
+            error: 'Portfolio data was cleared, but the cash balance could not be reset'
+        }, 500);
     }
 
-    const { error: deleteUserError } = await admin.auth.admin.deleteUser(user.id);
-    if (deleteUserError) {
-        console.error(`Failed to delete auth user ${user.id}:`, deleteUserError);
-        return jsonResponse(request, { error: 'Account data was cleared, but the sign-in identity could not be deleted' }, 500);
+    if (!profile) {
+        const { error: insertError } = await admin.from('user_profiles').insert({
+            id: user.id,
+            username: user.email?.split('@')[0] || 'trader',
+            email: user.email,
+            cash_balance: startingBalance
+        });
+        if (insertError) {
+            console.error(`Failed to recreate profile for ${user.id}:`, insertError);
+            return jsonResponse(request, {
+                error: 'Portfolio data was cleared, but the profile could not be reset'
+            }, 500);
+        }
     }
 
-    return jsonResponse(request, { ok: true, action });
+    return jsonResponse(request, { ok: true, action: 'reset', startingBalance });
 });

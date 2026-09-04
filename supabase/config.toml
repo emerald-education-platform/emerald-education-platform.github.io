@@ -7,3 +7,8 @@ verify_jwt = false
 # Authentication is verified inside the function with auth.getUser so it works
 # with both legacy and current Supabase signing keys.
 verify_jwt = false
+
+[functions.portfolio-reset]
+# Authentication is verified inside the function before its narrowly scoped
+# service-role client can clear any rows.
+verify_jwt = false
