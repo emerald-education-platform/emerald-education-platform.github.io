@@ -694,6 +694,12 @@
     }
 
     async function runAccountAction(action, extraBody = {}) {
+        // Reset can be completed safely through the signed-in user's RLS-scoped
+        // database access. Keep it independent from the optional server function.
+        if (action === 'reset') {
+            return runBrowserReset(extraBody.startingBalance);
+        }
+
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         if (sessionError || !session?.access_token) {
             throw new Error('Your session has expired. Please sign in again.');
@@ -711,16 +717,10 @@
                 body: JSON.stringify({ action, ...extraBody })
             });
         } catch (requestError) {
-            if (action === 'reset') {
-                return runBrowserReset(extraBody.startingBalance);
-            }
             throw new Error('The secure account deletion service is not deployed yet. Deploy the account-actions Supabase function and try again.');
         }
 
         const payload = await response.json().catch(() => ({}));
-        if (response.status === 404 && action === 'reset') {
-            return runBrowserReset(extraBody.startingBalance);
-        }
         if (response.status === 404 && action === 'delete') {
             throw new Error('The secure account deletion service is not deployed yet. Deploy the account-actions Supabase function and try again.');
         }
